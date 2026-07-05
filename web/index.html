@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TBH Save Editor — Encantamentos</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header>
+    <div class="brand">TBH&nbsp;<span>Save Editor</span></div>
+    <div class="loadbar">
+      <input id="savePath" type="text" placeholder="caminho do SaveFile_Live.es3" spellcheck="false">
+      <select id="locale" title="Idioma dos nomes">
+        <option value="pt">PT-BR</option>
+        <option value="en">EN-US</option>
+      </select>
+      <button id="btnLoad">Carregar</button>
+      <button id="btnSave" class="primary" disabled>Salvar no jogo</button>
+    </div>
+  </header>
+
+  <main>
+    <aside id="heroPane" class="pane">
+      <h2>Heróis</h2>
+      <div id="heroList" class="list"></div>
+    </aside>
+
+    <section id="itemPane" class="pane">
+      <h2>Itens equipados</h2>
+      <div id="itemGrid" class="grid"></div>
+      <div id="itemEmpty" class="empty">Selecione um herói.</div>
+    </section>
+
+    <section id="enchPane" class="pane wide">
+      <h2 id="enchTitle">Encantamentos</h2>
+      <div id="enchBody"></div>
+      <div id="enchEmpty" class="empty">Selecione um item.</div>
+    </section>
+  </main>
+
+  <div id="toast" class="toast"></div>
+  <script src="/app.js"></script>
+</body>
+</html>
