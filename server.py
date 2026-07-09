@@ -13,7 +13,7 @@ import threading
 import urllib.parse
 import webbrowser
 
-from core import es3, gamedata
+from core import es3, gamedata, autobuild
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 DATA = os.path.join(ROOT, "data")
@@ -81,9 +81,14 @@ def heroes_payload():
             if str(uid) == "0" or str(uid) not in items_by_uid:
                 continue
             slots.append(item_payload(items_by_uid[str(uid)]))
+        skills = [{"key": k, "name": GD.skill_name(k, State.locale)}
+                  for k in h.get("equippedSKillKey", [])]
         out.append({"heroKey": h.get("heroKey"), "level": h.get("HeroLevel"),
+                    "exp": h.get("HeroExp"), "abilityPoint": h.get("AbilityPoint", 0),
+                    "allocatedPoints": h.get("AllocatedHeroAbilityPoint", 0),
                     "name": GD.hero_name(h.get("heroKey"), State.locale),
-                    "klass": GD.hero_class(h.get("heroKey")), "items": slots})
+                    "klass": GD.hero_class(h.get("heroKey")), "items": slots,
+                    "skills": skills})
     return {"heroes": out, "locale": State.locale, "path": State.path}
 
 
@@ -98,6 +103,58 @@ def find_item(uid):
         if str(it["UniqueId"]) == str(uid):
             return it
     return None
+
+
+def find_hero(hero_key):
+    for h in State.save.player.get("heroSaveDatas", []):
+        if str(h.get("heroKey")) == str(hero_key):
+            return h
+    return None
+
+
+def _num(body, key, lo, hi, kind=int):
+    """Le body[key] como numero com limites. None se ausente; ValueError se invalido."""
+    v = body.get(key)
+    if v is None or v == "":
+        return None
+    try:
+        v = kind(v)
+    except (TypeError, ValueError):
+        raise ValueError("%s inválido" % key)
+    if not (lo <= v <= hi):
+        raise ValueError("%s fora do intervalo [%s, %s]" % (key, lo, hi))
+    return v
+
+
+def hero_brief(h):
+    return {"heroKey": h.get("heroKey"), "level": h.get("HeroLevel"), "exp": h.get("HeroExp"),
+            "abilityPoint": h.get("AbilityPoint", 0),
+            "allocatedPoints": h.get("AllocatedHeroAbilityPoint", 0)}
+
+
+def runes_summary():
+    total = maxed = unknown = 0
+    for r in State.save.player.get("RuneSaveData", []):
+        total += 1
+        mx = GD.rune_max_level(r.get("RuneKey"))
+        if mx is None:
+            unknown += 1
+        elif int(r.get("Level", 0)) >= mx:
+            maxed += 1
+    return {"total": total, "maxed": maxed, "unknown": unknown}
+
+
+def player_payload():
+    p = State.save.player
+    currencies = [{"key": c.get("Key"), "name": GD.currency_name(c.get("Key"), State.locale),
+                   "quantity": c.get("Quantity", 0)} for c in p.get("currenySaveDatas", [])]
+    pets = [{"key": x.get("PetKey"), "name": GD.pet_name(x.get("PetKey"), State.locale),
+             "unlocked": bool(x.get("IsUnlock"))} for x in p.get("PetSaveData", [])]
+    cube = p.get("cubeSaveLevelData") or {}
+    arranged = (p.get("commonSaveData") or {}).get("ArrangedPetKey")
+    return {"currencies": currencies, "pets": pets, "arrangedPetKey": arranged,
+            "runes": runes_summary(),
+            "cube": {"level": cube.get("Level"), "exp": cube.get("Exp")} if cube else None}
 
 
 # ---------------- HTTP handler ----------------
@@ -153,6 +210,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return self._send(200, {"type": mtype, "materials": mats})
         if p == "/api/options":
             return self._send(200, options_payload(q["material"][0], int(q["item"][0])))
+        if p == "/api/player":
+            if not State.save:
+                return self._send(400, {"error": "save nao carregado"})
+            return self._send(200, player_payload())
         return self._send(404, {"error": "rota desconhecida"})
 
     # ---- POST ----
@@ -195,6 +256,147 @@ class Handler(http.server.BaseHTTPRequestHandler):
             GD.bump_applied(it, slot)     # +1 no AppliedTotalCount do tipo
             GD.recount_enchants(it)       # EnchantCount = nº ativos por tipo (ATIVA o efeito no jogo)
             return self._send(200, item_payload(it))
+        if p == "/api/auto_build":
+            if not State.save:
+                return self._send(400, {"error": "save nao carregado"})
+            mode = body.get("mode", "balanced")
+            if mode not in ("balanced", "damage", "survival"):
+                return self._send(400, {"error": "modo inválido"})
+            overwrite = bool(body.get("overwrite", True))
+            hero_key = body.get("heroKey")
+            heroes = State.save.player.get("heroSaveDatas", [])
+            if hero_key not in (None, "", "all"):
+                heroes = [h for h in heroes if str(h.get("heroKey")) == str(hero_key)]
+                if not heroes:
+                    return self._send(404, {"error": "herói não encontrado"})
+            items_by_uid = {str(it["UniqueId"]): it for it in State.save.player.get("itemSaveDatas", [])}
+            n_items = n_slots = 0
+            for h in heroes:
+                hk = h.get("heroKey")
+                for uid in h.get("equippedItemIds", []):
+                    it = items_by_uid.get(str(uid))
+                    if not it:
+                        continue
+                    plan = autobuild.plan_item(GD, it["ItemKey"], hk, mode=mode,
+                                               overwrite=overwrite, current=it.get("EnchantData", []))
+                    if not plan:
+                        continue
+                    while len(it.get("EnchantData", [])) < 6:
+                        it.setdefault("EnchantData", []).append(GD.empty_enchant())
+                    touched = False
+                    for slot, ed in plan:
+                        if it["EnchantData"][slot] != ed:
+                            it["EnchantData"][slot] = ed
+                            GD.bump_applied(it, slot)
+                            n_slots += 1
+                            touched = True
+                    if touched:
+                        GD.recount_enchants(it)
+                        n_items += 1
+            res = heroes_payload()
+            res.update({"ok": True, "mode": mode, "overwrite": overwrite,
+                        "items": n_items, "slots": n_slots})
+            return self._send(200, res)
+        if p == "/api/set_skills":
+            if not State.save:
+                return self._send(400, {"error": "save nao carregado"})
+            mode = body.get("mode", "balanced")
+            if mode not in ("balanced", "damage", "survival"):
+                return self._send(400, {"error": "modo inválido"})
+            hero_key = body.get("heroKey")
+            heroes = State.save.player.get("heroSaveDatas", [])
+            if hero_key not in (None, "", "all"):
+                heroes = [h for h in heroes if str(h.get("heroKey")) == str(hero_key)]
+                if not heroes:
+                    return self._send(404, {"error": "herói não encontrado"})
+            changed = 0
+            for h in heroes:
+                new = autobuild.skill_loadout(h.get("heroKey"), mode, h.get("equippedSKillKey"))
+                if new and new != h.get("equippedSKillKey"):
+                    h["equippedSKillKey"] = new
+                    changed += 1
+            res = heroes_payload()
+            res.update({"ok": True, "mode": mode, "changed": changed})
+            return self._send(200, res)
+        if p == "/api/set_hero":
+            if not State.save:
+                return self._send(400, {"error": "save nao carregado"})
+            h = find_hero(body.get("heroKey"))
+            if not h:
+                return self._send(404, {"error": "herói não encontrado"})
+            try:
+                ap = _num(body, "abilityPoint", 0, 999999)
+                lv = _num(body, "level", 1, 1000)
+                xp = _num(body, "exp", 0, 10 ** 15, float)
+            except ValueError as e:
+                return self._send(400, {"error": str(e)})
+            if ap is not None:
+                h["AbilityPoint"] = ap
+            if lv is not None:
+                h["HeroLevel"] = lv
+            if xp is not None:
+                h["HeroExp"] = xp
+            return self._send(200, {"ok": True, "hero": hero_brief(h)})
+        if p == "/api/set_currency":
+            if not State.save:
+                return self._send(400, {"error": "save nao carregado"})
+            try:
+                key = _num(body, "key", 1, 10 ** 9)
+                qty = _num(body, "quantity", 0, 10 ** 13)
+            except ValueError as e:
+                return self._send(400, {"error": str(e)})
+            if key is None or qty is None:
+                return self._send(400, {"error": "key e quantity são obrigatórios"})
+            curs = State.save.player.setdefault("currenySaveDatas", [])
+            entry = next((c for c in curs if str(c.get("Key")) == str(key)), None)
+            if not entry:
+                if str(key) not in GD.currency_info:
+                    return self._send(404, {"error": "moeda desconhecida"})
+                entry = {"Key": int(key), "Quantity": 0}
+                curs.append(entry)
+            entry["Quantity"] = qty
+            return self._send(200, {"ok": True, "key": entry["Key"], "quantity": qty})
+        if p == "/api/set_pet":
+            if not State.save:
+                return self._send(400, {"error": "save nao carregado"})
+            pet = next((x for x in State.save.player.get("PetSaveData", [])
+                        if str(x.get("PetKey")) == str(body.get("petKey"))), None)
+            if not pet:
+                return self._send(404, {"error": "pet não encontrado no save"})
+            unlock = bool(body.get("unlock"))
+            arranged = (State.save.player.get("commonSaveData") or {}).get("ArrangedPetKey")
+            if not unlock and str(arranged) == str(pet.get("PetKey")):
+                return self._send(400, {"error": "esse pet está equipado — troque-o no jogo antes de bloquear"})
+            pet["IsUnlock"] = unlock
+            if unlock:
+                pet["IsViewed"] = True
+            return self._send(200, {"ok": True, "petKey": pet.get("PetKey"), "unlocked": unlock})
+        if p == "/api/max_runes":
+            if not State.save:
+                return self._send(400, {"error": "save nao carregado"})
+            changed = 0
+            for r in State.save.player.get("RuneSaveData", []):
+                mx = GD.rune_max_level(r.get("RuneKey"))
+                if mx is not None and int(r.get("Level", 0)) < mx:
+                    r["Level"] = mx
+                    changed += 1
+            return self._send(200, {"ok": True, "changed": changed, "runes": runes_summary()})
+        if p == "/api/set_cube":
+            if not State.save:
+                return self._send(400, {"error": "save nao carregado"})
+            cube = State.save.player.get("cubeSaveLevelData")
+            if not isinstance(cube, dict):
+                return self._send(404, {"error": "cubo não encontrado no save"})
+            try:
+                lv = _num(body, "level", 1, 999)
+                xp = _num(body, "exp", 0, 10 ** 12, float)
+            except ValueError as e:
+                return self._send(400, {"error": str(e)})
+            if lv is not None:
+                cube["Level"] = lv
+            if xp is not None:
+                cube["Exp"] = xp
+            return self._send(200, {"ok": True, "cube": {"level": cube.get("Level"), "exp": cube.get("Exp")}})
         if p == "/api/save":
             if not State.save:
                 return self._send(400, {"error": "nada carregado"})

@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>TBH Save Editor — Encantamentos</title>
+  <title>TBH Save Editor</title>
   <link rel="stylesheet" href="/style.css">
 </head>
 <body>
@@ -20,14 +20,43 @@
     </div>
   </header>
 
-  <main>
+  <nav class="tabs">
+    <button id="tabEquip" class="tab active">Equipamentos</button>
+    <button id="tabPlayer" class="tab">Jogador</button>
+  </nav>
+
+  <main id="mainEquip">
     <aside id="heroPane" class="pane">
       <h2>Heróis</h2>
       <div id="heroList" class="list"></div>
     </aside>
 
     <section id="itemPane" class="pane">
-      <h2>Itens equipados</h2>
+      <h2>Herói &amp; itens equipados</h2>
+      <div id="heroEdit" class="heroedit hidden"></div>
+      <div id="autoBuild" class="autobuild hidden">
+        <div class="ab-row">
+          <b>⚙ Build automática</b>
+          <select id="abMode" title="Estratégia da build">
+            <option value="balanced">Balanceado</option>
+            <option value="damage">Dano máximo</option>
+            <option value="survival">Sobrevivência (anti-Chaos 3-9)</option>
+          </select>
+          <label class="ab-check"><input type="checkbox" id="abOverwrite" checked> sobrescrever existentes</label>
+        </div>
+        <div class="actions">
+          <span class="ab-lbl">Encantamentos:</span>
+          <button id="abHero" class="primary" disabled>neste herói</button>
+          <button id="abAll">em TODOS</button>
+        </div>
+        <div class="actions">
+          <span class="ab-lbl">🎯 Skills (2 por classe):</span>
+          <button id="abSkillHero" disabled>neste herói</button>
+          <button id="abSkillAll">em TODOS</button>
+        </div>
+        <div class="hint">Preenche a melhor build da classe (arma/armadura/acessório) e as 2 melhores
+          skills — seguindo o modo escolhido. Depois clique em <b>Salvar no jogo</b>.</div>
+      </div>
       <div id="itemGrid" class="grid"></div>
       <div id="itemEmpty" class="empty">Selecione um herói.</div>
     </section>
@@ -36,6 +65,23 @@
       <h2 id="enchTitle">Encantamentos</h2>
       <div id="enchBody"></div>
       <div id="enchEmpty" class="empty">Selecione um item.</div>
+    </section>
+  </main>
+
+  <main id="mainPlayer" class="hidden">
+    <div id="playerEmpty" class="empty banner hidden">Carregue um save primeiro.</div>
+    <section class="pane">
+      <h2>Recursos</h2>
+      <div id="curList" class="kvlist"></div>
+    </section>
+    <section class="pane">
+      <h2>Pets</h2>
+      <div id="petGrid" class="grid"></div>
+      <div class="actions"><button id="btnAllPets">Desbloquear todos</button></div>
+    </section>
+    <section class="pane">
+      <h2>Runas</h2>
+      <div id="runeBox"></div>
     </section>
   </main>
 

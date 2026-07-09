@@ -72,6 +72,8 @@ class GameData:
         self.egrade = enums["EGradeType"]  # id(str) -> nome
         self.grades_by_name = {r["GRADE"]: r for r in _read_csv(os.path.join(t, "GradeInfoData.csv"))}
         self.hero_info = {r["HeroKey"]: r for r in _read_csv(os.path.join(t, "HeroInfoData.csv"))}
+        self.rune_info = {r["RuneKey"]: r for r in _read_csv(os.path.join(t, "RuneInfoData.csv"))}
+        self.currency_info = {r["CurrencyKey"]: r for r in _read_csv(os.path.join(t, "CurrencyInfoData.csv"))}
 
     # ---- herois ----
     def hero_name(self, herokey, locale="en"):
@@ -82,6 +84,35 @@ class GameData:
 
     def hero_class(self, herokey):
         return self.hero_info.get(str(herokey), {}).get("ClassType", "")
+
+    def skill_name(self, skillkey, locale="en"):
+        """Nome da skill; x0001 (ataque-base) nao tem nome proprio."""
+        s = str(skillkey)
+        if s.endswith("001") and len(s) == 5:  # ex 10001, 20001 -> ataque base
+            return "Ataque base"
+        return self.string("SkillName_%s" % skillkey, locale, "Skill %s" % skillkey)
+
+    # ---- strings localizadas genericas ----
+    def string(self, key, locale="en", fallback=None):
+        return (self.strings.get(locale, {}).get(key)
+                or self.strings["en"].get(key) or fallback)
+
+    def currency_name(self, key, locale="en"):
+        return self.string("CurrencyName_%s" % key, locale, "Moeda %s" % key)
+
+    def pet_name(self, key, locale="en"):
+        return self.string("PetName_%s" % key, locale, "Pet %s" % key)
+
+    # ---- runas ----
+    def rune_max_level(self, rune_key):
+        """Nivel maximo da runa pela tabela do jogo (None se desconhecido)."""
+        r = self.rune_info.get(str(rune_key))
+        if not r:
+            return None
+        try:
+            return int(r["MaxLevel"])
+        except (KeyError, TypeError, ValueError):
+            return None
 
     # ---- grade e slots ----
     def grade_id(self, itemkey):
