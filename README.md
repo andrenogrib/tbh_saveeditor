@@ -1,80 +1,86 @@
 # TBH Save Editor
 
-App web local (roda no navegador) para editar o save do **Taskbar Hero**, com **validação pelas
-tabelas reais do jogo** e **recálculo automático do `SystemInfo`** (a proteção anti-tamper) ao salvar.
+A local web app (runs in your browser) to edit **Taskbar Hero** save files, with
+**validation against the real game tables** and **automatic `SystemInfo` recalculation**
+(the anti-tamper checksum) on save.
 
-O que dá para editar:
+## What you can edit
 
-- **Encantamentos** (decoration / engraving / inscription) dos itens equipados dos heróis;
-- **Build automática** (botão *Auto-build*): preenche cada slot com a **melhor build da classe**
-  do herói (Knight/Slayer melee físico, Ranger físico projétil, Hunter/Sorcerer elementais,
-  Priest suporte), calculada a partir das skills e stats reais do jogo. Modos: *Balanceado*,
-  *Dano máximo* e *Sobrevivência* (mantém o dano e reforça Max HP + Damage Reduction +
-  Life Leech + resistência para o mapa 3-9 / Core of the Abyss). Também recomenda as **2
-  melhores skills** por classe. Aplica num herói ou em todos de uma vez;
-- **Heróis**: nível, EXP e **skill points** sobrando (`AbilityPoint`);
-- **Recursos** (aba *Jogador*): quantidade de **Ouro** e **nível do Cubo**;
-- **Pets** (aba *Jogador*): desbloquear/bloquear cada um (ou todos de uma vez);
-- **Runas** (aba *Jogador*): elevar todas ao nível máximo das tabelas do jogo.
+- **Enchantments** (decoration / engraving / inscription) on the heroes' equipped items.
+- **Auto-build** (⚙ button): fills every slot with the **best build for the hero's class**,
+  respecting how many slots the item's grade allows. Class profiles are derived from the
+  game's real skills and stats (Knight/Slayer physical melee, Ranger physical projectile,
+  Hunter/Sorcerer elemental AoE, Priest support). Three modes:
+  - **Balanced** — solid damage with defensive armor;
+  - **Max damage** — offense everywhere;
+  - **Survival** — keeps your damage and stacks Max HP + Damage Reduction + Life Leech +
+    resistance, for the 3-9 map / Core of the Abyss.
 
-## Como usar (na máquina onde você joga)
+  It also sets the **2 recommended active skills** per class. Apply to one hero or to all at once.
+- **Heroes**: level, EXP, and unspent **skill points** (`AbilityPoint`).
+- **Resources** (*Player* tab): amount of **Gold** and **Cube** level.
+- **Pets** (*Player* tab): unlock/lock each one (or all at once).
+- **Runes** (*Player* tab): raise them all to the max level from the game tables.
 
-Pré-requisito: **Python 3** instalado. Nada além disso — sem `pip install`.
+## How to use (on the machine where you play)
+
+Prerequisite: **Python 3** installed. Nothing else — no `pip install`.
 
 ```
 cd saveEditor
 python server.py
 ```
 
-Abre `http://127.0.0.1:8765` no navegador. Então:
+Opens `http://127.0.0.1:8765` in your browser. Then:
 
-1. O caminho do `SaveFile_Live.es3` já vem preenchido (auto-detectado). Clique **Carregar**.
-2. Escolha um **herói** → painel do herói (nível / EXP / skill points) + **itens equipados**.
-3. Clique num **item** → painel de **encantamentos** (2 Decoration, 2 Engraving, 2 Inscription).
-4. **Editar/Adicionar** um slot: escolha o **material** → o **stat** (as opções válidas para o
-   tipo de equipamento) → o **tier** → o **valor** (dentro do range; botão **Máx**). Só valores
-   coerentes são aceitos.
-   - Ou use **⚙ Build automática**: escolha o modo (Balanceado / Dano máximo / Sobrevivência) e
-     clique **Aplicar neste herói** ou **Aplicar em TODOS**. Marque *sobrescrever existentes* para
-     otimizar o que já tem, ou desmarque para só completar os slots vazios.
-5. Na aba **Jogador**: edite Ouro e nível do Cubo, desbloqueie pets e maximize runas.
-6. **Salvar no jogo** grava o `.es3` (com backup `.es3.bak`) e recalcula o `SystemInfo`.
+1. The path to `SaveFile_Live.es3` is pre-filled (auto-detected). Click **Load**.
+2. Pick a **hero** → hero panel (level / EXP / skill points) + **equipped items**.
+3. Click an **item** → **enchantment** panel (2 Decoration, 2 Engraving, 2 Inscription).
+4. **Edit/Add** a slot: choose the **material** → the **stat** (only the options valid for that
+   equipment type) → the **tier** → the **value** (within range; **Max** button). Only coherent
+   values are accepted.
+   - Or use **⚙ Auto-build**: pick the mode (Balanced / Max damage / Survival) and click
+     **Apply to this hero** or **Apply to ALL**. Check *overwrite existing* to optimize what's
+     already there, or uncheck it to only fill empty slots.
+5. In the **Player** tab: edit Gold and Cube level, unlock pets, and max out runes.
+6. **Save to game** writes the `.es3` (with a `.es3.bak` backup) and recalculates the `SystemInfo`.
 
-> **Feche o jogo antes de salvar** — senão ele sobrescreve o arquivo ao sair.
+> **Close the game before saving** — otherwise it overwrites the file on exit.
 
-## Estrutura
+## Project structure
 
 ```
 saveEditor/
-  server.py          # servidor web local (stdlib, zero deps)
+  server.py          # local web server (stdlib, zero deps)
   core/
-    es3.py           # decripta/encripta o .es3 + recalcula o SystemInfo (HMAC)
-    aes_pure.py      # AES-128 em Python puro (fallback sem dependencias)
-    gamedata.py      # tabelas do jogo + validacao de encantamentos
+    es3.py           # decrypt/encrypt the .es3 + recalculate the SystemInfo (HMAC)
+    aes_pure.py      # pure-Python AES-128 (fallback with no dependencies)
+    gamedata.py      # game tables + enchantment validation
+    autobuild.py     # per-class best-build logic + skill recommendations
   web/               # interface (HTML/CSS/JS)
-  data/              # dados extraidos do jogo (portavel; vai junto com a app)
+  data/              # data extracted from the game (portable; ships with the app)
     tables/*.csv     # StatModInfoData, MaterialInfoData, StatModGroupInfoData, GradeInfoData...
-    names_en.json / names_pt.json   # nomes traduzidos por ItemKey
+    names_en.json / names_pt.json   # translated names per ItemKey
     enums.json       # StatType / MODTYPE / ERecipeType / EMaterialType / EGradeType
-    icons/*.png      # icones dos itens/materiais
-  extract/           # scripts que GERAM data/ (rodam 1x, requerem UnityPy)
+    icons/*.png      # item/material icons
+  extract/           # scripts that GENERATE data/ (run once, require UnityPy)
 ```
 
-## Re-extrair dados (quando o jogo atualizar)
+## Re-extracting data (when the game updates)
 
-Os dados em `data/` foram extraídos da versão **1.00.17**. Se o jogo atualizar e os valores
-mudarem, re-extraia (numa máquina com o jogo + `pip install UnityPy`):
+The data in `data/` was extracted from version **1.00.17**. If the game updates and the values
+change, re-extract (on a machine with the game + `pip install UnityPy`):
 
 ```
 python extract/extract_all.py
 ```
 
-Se uma atualização trocar a **chave HMAC** do `SystemInfo`, atualize `SYSTEMINFO_HMAC_KEY`
-em `core/es3.py` (extraível em runtime via o `dtcore.dll`, hotkey F8).
+If an update changes the `SystemInfo` **HMAC key**, update `SYSTEMINFO_HMAC_KEY` in
+`core/es3.py` (extractable at runtime via `dtcore.dll`, hotkey F8).
 
-## Como funciona a validação
+## How validation works
 
-`material → MaterialInfoData (tipo + grupo) → StatModGroupInfoData (StatModKey + tier por GearGroup)
-→ StatModInfoData (StatType, ModType, range de Value por tier)`. O GearGroup do item
-(WEAPON/ARMOR/ACCESSORY) sai da faixa do ItemKey. O editor só permite combinações que existem
-no jogo, então os encantamentos resultantes são legítimos.
+`material → MaterialInfoData (type + group) → StatModGroupInfoData (StatModKey + tier per GearGroup)
+→ StatModInfoData (StatType, ModType, Value range per tier)`. The item's GearGroup
+(WEAPON/ARMOR/ACCESSORY) comes from the ItemKey range. The editor only allows combinations that
+exist in the game, so the resulting enchantments are legitimate.
