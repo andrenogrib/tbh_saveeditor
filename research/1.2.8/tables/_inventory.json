@@ -1,0 +1,277 @@
+[
+ {
+  "name": "PerformanceTestRunInfo",
+  "file": "resources.assets",
+  "bytes": 3694
+ },
+ {
+  "name": "nv-constant-template",
+  "file": "resources.assets",
+  "bytes": 819
+ },
+ {
+  "name": "PerformanceTestRunSettings",
+  "file": "resources.assets",
+  "bytes": 23
+ },
+ {
+  "name": "nv-emphasis-template",
+  "file": "resources.assets",
+  "bytes": 995
+ },
+ {
+  "name": "LineBreaking Leading Characters",
+  "file": "resources.assets",
+  "bytes": 95
+ },
+ {
+  "name": "nv-pattern-template",
+  "file": "resources.assets",
+  "bytes": 251
+ },
+ {
+  "name": "LineBreaking Following Characters",
+  "file": "resources.assets",
+  "bytes": 269
+ },
+ {
+  "name": "BuffGroupInfoData",
+  "file": "sharedassets0.assets",
+  "bytes": 361
+ },
+ {
+  "name": "AttributeGroupInfoData",
+  "file": "sharedassets0.assets",
+  "bytes": 124
+ },
+ {
+  "name": "InventoryInfoData",
+  "file": "sharedassets0.assets",
+  "bytes": 3138
+ },
+ {
+  "name": "RuneLevelInfoData",
+  "file": "sharedassets0.assets",
+  "bytes": 41617
+ },
+ {
+  "name": "DropInfoData",
+  "file": "sharedassets0.assets",
+  "bytes": 1120240
+ },
+ {
+  "name": "ItemTypeScaleInfoData",
+  "file": "sharedassets0.assets",
+  "bytes": 105
+ },
+ {
+  "name": "StageLevelInfoData",
+  "file": "sharedassets0.assets",
+  "bytes": 5251
+ },
+ {
+  "name": "PcSkinInfo",
+  "file": "sharedassets0.assets",
+  "bytes": 6459
+ },
+ {
+  "name": "GearTypeInfoData",
+  "file": "sharedassets0.assets",
+  "bytes": 589
+ },
+ {
+  "name": "PassiveSkillInfoData",
+  "file": "sharedassets0.assets",
+  "bytes": 5872
+ },
+ {
+  "name": "StatModGroupInfoData",
+  "file": "sharedassets0.assets",
+  "bytes": 13176
+ },
+ {
+  "name": "StorageInfoData",
+  "file": "sharedassets0.assets",
+  "bytes": 787
+ },
+ {
+  "name": "GearInfoData",
+  "file": "sharedassets0.assets",
+  "bytes": 442219
+ },
+ {
+  "name": "CubeLevelInfoData",
+  "file": "sharedassets0.assets",
+  "bytes": 1117
+ },
+ {
+  "name": "RuneInfoData",
+  "file": "sharedassets0.assets",
+  "bytes": 18757
+ },
+ {
+  "name": "SynthesisRecipeInfoData",
+  "file": "sharedassets0.assets",
+  "bytes": 31089
+ },
+ {
+  "name": "CurrencyInfoData",
+  "file": "sharedassets0.assets",
+  "bytes": 143
+ },
+ {
+  "name": "GearTypeScaleInfoData",
+  "file": "sharedassets0.assets",
+  "bytes": 492
+ },
+ {
+  "name": "StageInfoData",
+  "file": "sharedassets0.assets",
+  "bytes": 33285
+ },
+ {
+  "name": "SkillInfoData",
+  "file": "sharedassets0.assets",
+  "bytes": 16634
+ },
+ {
+  "name": "StatModInfoData",
+  "file": "sharedassets0.assets",
+  "bytes": 26112
+ },
+ {
+  "name": "StatusEffectInfoData",
+  "file": "sharedassets0.assets",
+  "bytes": 329
+ },
+ {
+  "name": "MaterialInfoData",
+  "file": "sharedassets0.assets",
+  "bytes": 3235
+ },
+ {
+  "name": "MonsterInfoData",
+  "file": "sharedassets0.assets",
+  "bytes": 11360
+ },
+ {
+  "name": "GradeInfoData",
+  "file": "sharedassets0.assets",
+  "bytes": 757
+ },
+ {
+  "name": "SoundInfoData",
+  "file": "sharedassets0.assets",
+  "bytes": 16887
+ },
+ {
+  "name": "CommonStatModInfoData",
+  "file": "sharedassets0.assets",
+  "bytes": 347
+ },
+ {
+  "name": "StashInfoData",
+  "file": "sharedassets0.assets",
+  "bytes": 1221
+ },
+ {
+  "name": "ItemInfoData",
+  "file": "sharedassets0.assets",
+  "bytes": 670976
+ },
+ {
+  "name": "ItemGroupInfoData",
+  "file": "sharedassets0.assets",
+  "bytes": 73357
+ },
+ {
+  "name": "CubeRecipeInfoData",
+  "file": "sharedassets0.assets",
+  "bytes": 518
+ },
+ {
+  "name": "HeroInfoData",
+  "file": "sharedassets0.assets",
+  "bytes": 1779
+ },
+ {
+  "name": "OfflineRewardInfoData",
+  "file": "sharedassets0.assets",
+  "bytes": 2431
+ },
+ {
+  "name": "UniqueModInfoData",
+  "file": "sharedassets0.assets",
+  "bytes": 5354
+ },
+ {
+  "name": "AttributeInfoData",
+  "file": "sharedassets0.assets",
+  "bytes": 6295
+ },
+ {
+  "name": "TradingStashInfoData",
+  "file": "sharedassets0.assets",
+  "bytes": 74
+ },
+ {
+  "name": "SkillLevelInfoData",
+  "file": "sharedassets0.assets",
+  "bytes": 4975
+ },
+ {
+  "name": "SkinInfoData",
+  "file": "sharedassets0.assets",
+  "bytes": 259
+ },
+ {
+  "name": "ExtractionCostInfoData",
+  "file": "sharedassets0.assets",
+  "bytes": 3018
+ },
+ {
+  "name": "CraftingRecipeInfoData",
+  "file": "sharedassets0.assets",
+  "bytes": 2780
+ },
+ {
+  "name": "SynthesisDropInfoData",
+  "file": "sharedassets0.assets",
+  "bytes": 8598
+ },
+ {
+  "name": "PetInfoData",
+  "file": "sharedassets0.assets",
+  "bytes": 582
+ },
+ {
+  "name": "PetStatInfoData",
+  "file": "sharedassets0.assets",
+  "bytes": 465
+ },
+ {
+  "name": "ItemLevelScaleInfoData",
+  "file": "sharedassets0.assets",
+  "bytes": 494
+ },
+ {
+  "name": "LevelInfoData",
+  "file": "sharedassets0.assets",
+  "bytes": 1323
+ },
+ {
+  "name": "CubeSubRecipeInfoData",
+  "file": "sharedassets0.assets",
+  "bytes": 2816
+ },
+ {
+  "name": "BuffInfoData",
+  "file": "sharedassets0.assets",
+  "bytes": 1329
+ },
+ {
+  "name": "PlagueIntensityInfoData",
+  "file": "sharedassets0.assets",
+  "bytes": 1764
+ }
+]

@@ -1,0 +1,1120 @@
+{
+ "ACTIVATIONTYPE": {
+  "0": "BASEATTACK",
+  "1": "BASEATTACK_COUNT",
+  "2": "COOLDOWN",
+  "3": "CONTINUOUS"
+ },
+ "BuffExpireConditionType": {
+  "0": "Time",
+  "1": "BaseAttackCount",
+  "2": "Stage"
+ },
+ "BuffStackType": {
+  "0": "OnlyOne",
+  "1": "Stackable"
+ },
+ "BuffType": {
+  "0": "Buff",
+  "1": "Debuff"
+ },
+ "BundleSlot.EBundleOwnType": {
+  "0": "None",
+  "1": "Possible",
+  "2": "Impossible"
+ },
+ "CommandType": {
+  "0": "None",
+  "1": "BackendRedirection"
+ },
+ "ComparisonType": {
+  "0": "LessThan",
+  "1": "Equal",
+  "2": "GreaterThan"
+ },
+ "ConsumeContentType": {
+  "0": "alchemy",
+  "1": "decoration",
+  "2": "engraving",
+  "3": "inscription"
+ },
+ "ContextMemberFilter": {
+  "-1": "All",
+  "0": "None",
+  "1": "Methods",
+  "16": "Recursive",
+  "2": "Properties",
+  "32": "Triggers",
+  "4": "Fields",
+  "8": "Contexts"
+ },
+ "CreditsText.EType": {
+  "0": "Type1",
+  "1": "Type2"
+ },
+ "CubeSlotSettingType": {
+  "-1": "AllBackGroundOff",
+  "-2": "DefaultItemSlotBackGround"
+ },
+ "DamageTexture.TextureType": {
+  "0": "Default",
+  "1": "Critical",
+  "2": "Heal",
+  "3": "Fire",
+  "4": "Cold",
+  "5": "Lightning"
+ },
+ "DamageableType": {
+  "1": "Hero",
+  "2": "Monster",
+  "6": "Structure"
+ },
+ "DataBindSettings.DataProviderFormats": {
+  "0": "FirstLetterLowerCase",
+  "1": "FirstLetterUpperCase"
+ },
+ "DataBindingType": {
+  "0": "Context",
+  "1": "Provider",
+  "2": "Constant",
+  "3": "Reference"
+ },
+ "DetectType": {
+  "0": "MiddleDetectRadius",
+  "1": "SpawnLeftDirection",
+  "2": "SpawnRightDirection"
+ },
+ "EATTACKSTATE": {
+  "0": "PREDELAY",
+  "1": "ACTIONTIME",
+  "2": "POSTDELAY"
+ },
+ "EATTRIBUTETYPE": {
+  "0": "PASSIVESKILL",
+  "1": "ACTIVESKILL",
+  "2": "ACTIVESKILLSLOT"
+ },
+ "EAccountStatus": {
+  "0": "IncreaseGoldAmount",
+  "1": "AdditionalGold",
+  "10": "MaxAmountActBossChest",
+  "11": "CubeExpPercent",
+  "12": "CubeAlchemyGoldPercent",
+  "13": "AllHeroMoveSpeed",
+  "14": "AllHeroAttackSpeed",
+  "15": "AllHeroAttackDamage",
+  "16": "AllHeroAttackDamagePercent",
+  "17": "AllHeroArmor",
+  "18": "AllHeroArmorPercent",
+  "19": "AdditionalGoldStageBoss",
+  "2": "IncreaseExpAmount",
+  "20": "AdditionalGoldActBoss",
+  "21": "AdditionalGoldNormalMonster",
+  "22": "AdditionalExpStageBoss",
+  "23": "AdditionalExpActBoss",
+  "24": "AdditionalExpNormalMonster",
+  "25": "MaxInventorySlot",
+  "26": "UnlockStashPageCount",
+  "27": "UnlockArrangeSlotCount",
+  "28": "UnlockSkillSlotCount",
+  "29": "DropChanceNormalChestPercent",
+  "3": "AdditionalExp",
+  "30": "DropChanceStageBossChestPercent",
+  "31": "UnlockAutoOpenNormalChest",
+  "32": "ReduceAutoOpenNormalChestTime",
+  "33": "UnlockAutoOpenStageBossChest",
+  "34": "ReduceAutoOpenStageBossChestTime",
+  "35": "UnlockAutoOpenActBossChest",
+  "36": "ReduceAutoOpenActBossChestTime",
+  "37": "OpenOneTypeChestAllAtOnce",
+  "38": "OpenAllTypeChestAllAtOnce",
+  "39": "UnlockOfflineReward",
+  "4": "DropChanceNormalChest",
+  "40": "OfflineRewardGoldPercent",
+  "41": "OfflineRewardExpPercent",
+  "42": "MaxAmountPlagueNormalChest",
+  "43": "MaxAmountPlagueStageBossChest",
+  "44": "MaxAmountPlagueActBossChest",
+  "45": "UnlockAutoOpenPlagueNormalChest",
+  "46": "ReduceAutoOpenPlagueNormalChestTime",
+  "47": "UnlockAutoOpenPlagueStageBossChest",
+  "48": "ReduceAutoOpenPlagueStageBossChestTime",
+  "49": "UnlockAutoOpenPlagueActBossChest",
+  "5": "DropChanceStageBossChest",
+  "50": "ReduceAutoOpenPlagueActBossChestTime",
+  "51": "DropChancePlagueNormalChestPercent",
+  "52": "DropChancePlagueStageBossChestPercent",
+  "6": "WaveCountReduction",
+  "7": "WaveMonsterAmount",
+  "8": "MaxAmountNormalChest",
+  "9": "MaxAmountStageBossChest"
+ },
+ "EAccountStatusCategory": {
+  "0": "Battle",
+  "1": "Exploration",
+  "2": "Reward"
+ },
+ "EAddCubeResult": {
+  "0": "Success",
+  "1": "AlreadyEquipItemIn",
+  "10": "NotMatchEngraving",
+  "11": "NotMatchInscription",
+  "12": "NotMatchOffering",
+  "13": "NotMatchExtraction",
+  "14": "NotValidItem",
+  "15": "NotValidRecipe",
+  "16": "CannotSynthesisCosmic",
+  "17": "BlockedItem",
+  "18": "ReservedSoulStone",
+  "19": "ServerPendingItem",
+  "2": "AlreadyEquipItemInWhenMoreMaterial",
+  "20": "LowTierSynthesis",
+  "21": "AlreadyInCubeSameItem",
+  "22": "AlreadyInCubeSoRemoved",
+  "23": "DeleteItemOnlyAlchemy",
+  "24": "CubeIsRunning",
+  "25": "LowCubeLevel",
+  "3": "CannotInputInCubeEquipItem",
+  "4": "NotMatchAlchemy",
+  "5": "NotMatchSynthesis",
+  "6": "NotMatchSynthesisItemGrade",
+  "7": "NotMatchSynthesisNowSynthesisType",
+  "8": "NotMatchCrafting",
+  "9": "NotMatchDecoration"
+ },
+ "EAggregateCategory": {
+  "0": "Battle",
+  "1": "Economy",
+  "2": "Cube",
+  "3": "Etc",
+  "4": "PlagueLand"
+ },
+ "EAggregateContent": {
+  "0": "Total",
+  "1": "Normal",
+  "2": "Plague",
+  "3": "End"
+ },
+ "EAggregateType": {
+  "0": "MonsterKill",
+  "1": "HeroDeath",
+  "10": "Decoration",
+  "11": "Engraving",
+  "12": "Inscription",
+  "13": "StageClear",
+  "14": "StageFail",
+  "15": "PlayTime",
+  "16": "BoxOpen",
+  "17": "ActBossKill",
+  "18": "TradingStashLoad",
+  "19": "SteamOriginItemBuy",
+  "2": "GoldEarn",
+  "3": "BoxObtain",
+  "4": "ItemObtain",
+  "5": "Synthesis",
+  "6": "Alchemy",
+  "7": "Crafting",
+  "8": "Offering",
+  "9": "Extraction"
+ },
+ "EBackendPostRewardResult": {
+  "0": "Success",
+  "1": "Fail",
+  "2": "NotEnoughInventorySpace"
+ },
+ "EBlockingReason": {
+  "0": "BecauseMailBox",
+  "1": "BecauseSteamDisconnect",
+  "2": "BecauseResetData",
+  "3": "BecauseRunningFixingInventory",
+  "4": "BecauseServerIssuePopUp"
+ },
+ "EBoxType": {
+  "0": "NORMAL",
+  "1": "BOSS",
+  "2": "ACTBOSS"
+ },
+ "EContentType": {
+  "0": "NONE",
+  "1": "PLAGUE"
+ },
+ "ECreditCategory": {
+  "0": "Developer",
+  "1": "Helper",
+  "2": "License"
+ },
+ "ECubeDataType": {
+  "0": "None",
+  "1": "Inventory",
+  "2": "Stash",
+  "3": "Gear"
+ },
+ "ECubeSynthesisResult": {
+  "0": "Fail",
+  "1": "Success",
+  "2": "GreatSuccess"
+ },
+ "EDamageAttribute": {
+  "0": "Physical",
+  "1": "Fire",
+  "2": "Cold",
+  "3": "Lightning",
+  "4": "Chaos",
+  "5": "AllElement",
+  "6": "None"
+ },
+ "EDamageType": {
+  "0": "None",
+  "1": "Melee",
+  "16": "DOT",
+  "2": "Projectile",
+  "32": "Trap",
+  "4": "AOE",
+  "8": "Summon"
+ },
+ "EDropType": {
+  "0": "EachDropOneWeight",
+  "1": "SelectOneByClass",
+  "2": "EachDropOneWeight_DLCVariant"
+ },
+ "EEquipClassType": {
+  "0": "All",
+  "1": "Knight",
+  "2": "Ranger",
+  "3": "Sorcerer",
+  "4": "Priest",
+  "5": "Hunter",
+  "6": "Slayer"
+ },
+ "EFollowTargetMode": {
+  "0": "None",
+  "1": "FollowX",
+  "2": "FollowY",
+  "3": "FollowZ",
+  "4": "FollowPos"
+ },
+ "EFunctionSource": {
+  "0": "BossBox",
+  "1": "Offering",
+  "2": "Synthesis",
+  "3": "Crafting",
+  "4": "Box",
+  "5": "MailBox",
+  "6": "Unknown"
+ },
+ "EGearGroup": {
+  "0": "NONE",
+  "1": "WEAPON",
+  "2": "ARMOR",
+  "3": "ACCESSORY",
+  "4": "COMMON"
+ },
+ "EGearType": {
+  "0": "NONE",
+  "1": "SWORD",
+  "10": "TOME",
+  "11": "BOLT",
+  "12": "HATCHET",
+  "13": "HELMET",
+  "14": "ARMOR",
+  "15": "GLOVES",
+  "16": "BOOTS",
+  "17": "AMULET",
+  "18": "EARING",
+  "19": "RING",
+  "2": "BOW",
+  "20": "BRACER",
+  "3": "STAFF",
+  "4": "SCEPTER",
+  "5": "CROSSBOW",
+  "6": "AXE",
+  "7": "SHIELD",
+  "8": "ARROW",
+  "9": "ORB"
+ },
+ "EGearUniqueMod": {
+  "0": "None",
+  "1000001": "WaveMoveSlowestPartyExcludeSelf",
+  "1000002": "WaveMoveFastestPartyMember",
+  "1000008": "SlayerLowHpAttackSpeed",
+  "1000009": "SorcererLightningShock",
+  "1000010": "WhirlwindFireIgnite",
+  "1000011": "SkillProjectileCountUp",
+  "1000012": "SkillMultiStrikeCountUp",
+  "1000013": "SkillElementChange",
+  "1000014": "SkillBaseAttackCountReduce",
+  "1000015": "SkillCooldownReduce",
+  "1000016": "SkillTrapAddAmount",
+  "1000017": "SkillRangeUp",
+  "1000021": "TakeAllyDamageInstead",
+  "1000022": "ShareTakenDamageToParty",
+  "1000023": "WaveMoveAveragePartyMember",
+  "1000024": "ElementResistUnifyToHighest",
+  "1000025": "ChaosResistFromHighestElement",
+  "1000026": "BlockDamageReductionUp",
+  "1000027": "SingleHitDamageCap",
+  "10001": "ShieldChargeKillCooldown",
+  "1001001": "StatValueUp",
+  "10011": "AegisFieldFollowOwner",
+  "10012": "AegisFieldAbsorbUp",
+  "20001": "SkewerShotBleedingStrike",
+  "20002": "ArrowRainCriticalCooldown",
+  "30001": "FlameHydraBerserk",
+  "30002": "IceOrbFreezeToCold",
+  "30003": "SnowstormEnhanceFrozenEnemy",
+  "40001": "WrathOfHeavenHeal",
+  "40011": "BlessingOfWardingElementBlock",
+  "40013": "SanctuaryHalf",
+  "40014": "SanctuaryDamageReduce",
+  "40015": "WrathOfHeavenKillCooldown",
+  "50001": "ExplosiveBoltHalf",
+  "50002": "ChargeTrapExplosiveCooldown",
+  "50003": "CrossbowTurretCooldown",
+  "50004": "CrossbowTurretAddAmount",
+  "50011": "BaseAttackCastExplosiveBolt",
+  "50012": "BaseAttackCastFrostBolt",
+  "50013": "BaseAttackCastShockBolt",
+  "60001": "AxeSpinBleedingChance",
+  "60011": "SkillLifeStealUp",
+  "60012": "AxeSpinBleedKillDurationUp",
+  "60013": "GroundSlamRockBaseAttackReduce"
+ },
+ "EGoldCurrencySource": {
+  "1": "MonsterKill",
+  "2": "CubeAlchemy",
+  "3": "OfflineReward"
+ },
+ "EGradeType": {
+  "0": "COMMON",
+  "1": "UNCOMMON",
+  "10": "NONE",
+  "2": "RARE",
+  "3": "LEGENDARY",
+  "4": "IMMORTAL",
+  "5": "ARCANA",
+  "6": "BEYOND",
+  "7": "CELESTIAL",
+  "8": "DIVINE",
+  "9": "COSMIC"
+ },
+ "EHeroType": {
+  "0": "Knight",
+  "1": "Archer",
+  "2": "Wizard",
+  "3": "Priest",
+  "4": "Hunter",
+  "5": "Barbarian"
+ },
+ "EItemCraftingType": {
+  "0": "MainWeapon",
+  "1": "SubWeapon",
+  "2": "Helmet",
+  "3": "Armor",
+  "4": "Gloves",
+  "5": "Boots",
+  "6": "Accessory",
+  "7": "None"
+ },
+ "EItemParts": {
+  "0": "NONE",
+  "1": "MAIN_WEAPON",
+  "10": "BRACER",
+  "2": "SUB_WEAPON",
+  "3": "HELMET",
+  "4": "ARMOR",
+  "5": "GLOVES",
+  "6": "BOOTS",
+  "7": "AMULET",
+  "8": "EARING",
+  "9": "RING"
+ },
+ "EItemSynthesisType": {
+  "0": "Gear",
+  "1": "Accessory",
+  "2": "Material",
+  "3": "None"
+ },
+ "EItemType": {
+  "0": "STAGEBOX",
+  "1": "MATERIAL",
+  "2": "GEAR",
+  "3": "NONE"
+ },
+ "ELogFilter": {
+  "-1": "All",
+  "0": "None",
+  "1": "StageClear",
+  "1024": "EngravingResult",
+  "128": "SynthesisResult",
+  "16": "HeroResurrection",
+  "16384": "ExtractionResult",
+  "2": "GetItemWithBoxOpen",
+  "2048": "InscriptionResult",
+  "256": "AlchemyResult",
+  "32": "HeroLevelUp",
+  "4": "GetBox",
+  "4096": "OfferingResult",
+  "512": "DecorationResult",
+  "64": "StageFailed",
+  "8": "HeroDie",
+  "8192": "CraftingResult"
+ },
+ "ELogType": {
+  "0": "None",
+  "1": "StageClear",
+  "10": "DecorationResult",
+  "11": "EngravingResult",
+  "12": "InscriptionResult",
+  "13": "OfferingResult",
+  "14": "CraftingResult",
+  "15": "ExtractionResult",
+  "2": "GetItemWithBoxOpen",
+  "3": "GetBox",
+  "4": "HeroDie",
+  "5": "HeroResurrection",
+  "6": "HeroLevelUp",
+  "7": "StageFailed",
+  "8": "SynthesisResult",
+  "9": "AlchemyResult"
+ },
+ "ELogWindowType": {
+  "0": "Small",
+  "1": "Medium",
+  "2": "Large"
+ },
+ "EMainTab": {
+  "0": "None",
+  "1": "Hero",
+  "2": "NewStash",
+  "3": "Portal",
+  "4": "Cube"
+ },
+ "EMaterialType": {
+  "0": "DECORATION",
+  "1": "SOULSTONE",
+  "2": "ENGRAVING",
+  "3": "INSCRIPTION",
+  "4": "OFFERING",
+  "5": "CRAFTING",
+  "6": "NONE",
+  "7": "ETC"
+ },
+ "EMaxFPS": {
+  "0": "FPS_60",
+  "1": "FPS_45",
+  "2": "FPS_30"
+ },
+ "EMonsterLogType": {
+  "0": "Monster",
+  "1": "Boss",
+  "2": "ActBoss"
+ },
+ "EMonsterType": {
+  "0": "MONSTER",
+  "1": "BOSS"
+ },
+ "EMovePivotTarget": {
+  "0": "Left",
+  "1": "Middle",
+  "2": "Right",
+  "3": "None"
+ },
+ "EMoveType": {
+  "0": "DRAG",
+  "1": "DIRECT",
+  "2": "LOCK"
+ },
+ "EPageTabType": {
+  "0": "Left",
+  "1": "Middle",
+  "2": "Right",
+  "3": "Bottom",
+  "4": "LeftMiddleRight"
+ },
+ "EParamExchangeType": {
+  "0": "Raw_Divide1000",
+  "1": "Raw_Divide100",
+  "2": "Divided",
+  "3": "DamageAttribute"
+ },
+ "EPendingType": {
+  "0": "Synthesis",
+  "1": "Enchant",
+  "2": "Box"
+ },
+ "EPetUnlockConditionType": {
+  "0": "NONE",
+  "1": "KillMonster",
+  "2": "DLC"
+ },
+ "EPopupType": {
+  "0": "ExitGame",
+  "1": "ResolutionChanged",
+  "2": "SteamDisconnect",
+  "3": "LocalizeExitGame",
+  "4": "DetectAntiCheat",
+  "5": "TradingStashBlock",
+  "6": "ToManyItems",
+  "7": "None"
+ },
+ "EQaTab": {
+  "0": "General",
+  "1": "Stage",
+  "2": "Item",
+  "3": "Character",
+  "4": "Window",
+  "5": "Etc"
+ },
+ "EREWARDTYPE": {
+  "0": "ITEM",
+  "1": "ITEMGROUP",
+  "2": "MONSTER"
+ },
+ "ERecipeType": {
+  "0": "ALCHEMY",
+  "1": "SYNTHESIS",
+  "2": "CRAFTING",
+  "3": "DECORATION",
+  "4": "ENGRAVING",
+  "5": "INSCRIPTION",
+  "6": "OFFERING",
+  "7": "EXTRACTION",
+  "8": "NONE",
+  "9": "CORROSION"
+ },
+ "ERedDotEvent": {
+  "0": "None",
+  "1": "NewItem",
+  "10": "NewBackendReward",
+  "2": "NewMail",
+  "3": "SkillPoint",
+  "4": "SkillEquipable",
+  "5": "UnlockableSynthesisRecipe",
+  "6": "UnlockStatus",
+  "7": "UnlockCube",
+  "8": "UnlockRune",
+  "9": "UnlockedPet"
+ },
+ "ERudderDirection": {
+  "0": "Up",
+  "1": "Left",
+  "2": "Right",
+  "3": "SubRight"
+ },
+ "ESTAGEDIFFICULTY": {
+  "0": "NORMAL",
+  "1": "NIGHTMARE",
+  "2": "HELL",
+  "3": "TORMENT",
+  "4": "COUNT"
+ },
+ "EScaleType": {
+  "0": "X",
+  "1": "Y",
+  "2": "Z"
+ },
+ "EShortcutTriggerMode": {
+  "0": "OnPress",
+  "1": "OnHold"
+ },
+ "ESkinButtonState": {
+  "0": "JustUnlocked",
+  "1": "Equipped",
+  "2": "PromoSkin",
+  "3": "NeedPurchase",
+  "4": "Unlocked"
+ },
+ "ESkinControllerType": {
+  "0": "Portrait",
+  "1": "InventoryPortrait",
+  "2": "FullIllust"
+ },
+ "ESkinSetCategory": {
+  "0": "Single",
+  "1": "Set"
+ },
+ "ESlotAction": {
+  "0": "NoOp",
+  "1": "Equip",
+  "10": "Toast_FullInventory",
+  "11": "Toast_FullCube",
+  "12": "CubeOut",
+  "13": "TradeWaitingListOut",
+  "14": "TradeIn",
+  "15": "Toast_FullTradingStash",
+  "16": "Toast_NotAllowedEnchantedTrade",
+  "2": "Lock",
+  "3": "Unlock",
+  "4": "MoveToStash",
+  "5": "MoveToCube",
+  "6": "MoveToInventory",
+  "7": "Toast_NoEquipable",
+  "8": "Toast_CannotMoveToCube",
+  "9": "Toast_FullStash"
+ },
+ "ESlotType": {
+  "0": "NONE",
+  "1": "INVENTORY",
+  "2": "STASH",
+  "3": "TRADINGSTASH",
+  "4": "CUBEINVENTORY",
+  "5": "GEAR"
+ },
+ "ESoundType": {
+  "0": "MASTER",
+  "1": "BGM",
+  "2": "GameSFX",
+  "3": "UI_SFX",
+  "4": "BattleLog"
+ },
+ "EStageEnterResultType": {
+  "0": "Success",
+  "1": "FailReasonEndStage",
+  "2": "FailReasonNeedSoulStone",
+  "3": "FailReasonNeedChestSpace",
+  "4": "FailReasonNotEnoughPollution",
+  "5": "FailReasonCanNotAddIntensity",
+  "6": "FailReasonIntensityLocked",
+  "7": "FailResonPlaguelandsEntryCoolTime",
+  "8": "Failed"
+ },
+ "EStageState": {
+  "0": "NONE",
+  "1": "MONSTERSPAWN",
+  "2": "BATTLE",
+  "3": "REORGANIZATION"
+ },
+ "EStageType": {
+  "0": "NORMAL",
+  "1": "ACTBOSS",
+  "2": "PLAGUE",
+  "3": "CONTAMINACTBOSS"
+ },
+ "EStashGradeTypeFilter": {
+  "-1": "START",
+  "0": "COMMON",
+  "1": "UNCOMMON",
+  "10": "END",
+  "2": "RARE",
+  "3": "LEGENDARY",
+  "4": "IMMORTAL",
+  "5": "ARCANA",
+  "6": "BEYOND",
+  "7": "CELESTIAL",
+  "8": "DIVINE",
+  "9": "COSMIC"
+ },
+ "EStashItemTypeFilter": {
+  "-1": "START",
+  "0": "WEAPON",
+  "1": "ARMOR",
+  "2": "ACCESSORY",
+  "3": "MATERIAL",
+  "4": "CLASS_KNIGHT",
+  "5": "CLASS_ARCHER",
+  "6": "CLASS_SORCERER",
+  "7": "END"
+ },
+ "EStatValueFormat": {
+  "0": "Count",
+  "1": "PlayTime",
+  "2": "GradeCount"
+ },
+ "EStatusUIState": {
+  "0": "Default",
+  "1": "StatDetail",
+  "2": "AttributeDetail",
+  "3": "SkillEquip",
+  "4": "SkillSlot"
+ },
+ "ESteamSessionStatType": {
+  "0": "BossKill",
+  "1": "HeroDeath",
+  "10": "CelestialItemFound",
+  "11": "DivineItemFound",
+  "12": "CosmicItemFound",
+  "13": "Synthesis",
+  "14": "Crafting",
+  "15": "Alchemy",
+  "16": "Extraction",
+  "17": "Offering",
+  "18": "Decoration",
+  "19": "Engraving",
+  "2": "HeroResurrection",
+  "20": "Inscription",
+  "21": "StageBoxOpen",
+  "22": "NormalBoxOpen",
+  "23": "ActBossBoxOpen",
+  "24": "AccountReset",
+  "25": "SessionCount",
+  "3": "HeroLevelUp",
+  "4": "StageClear",
+  "5": "StageFail",
+  "6": "FirstDefeatStageKey",
+  "7": "ItemObtain",
+  "8": "ArcanaItemFound",
+  "9": "BeyondItemFound"
+ },
+ "EToastType": {
+  "0": "LEFT",
+  "1": "CENTER",
+  "2": "RIGHT",
+  "3": "BOTTOM"
+ },
+ "ETooltipSourceType": {
+  "0": "None",
+  "1": "Inventory",
+  "2": "Gear",
+  "3": "Stash",
+  "4": "TradingStash",
+  "5": "Cube",
+  "6": "Popup"
+ },
+ "ETryEquipGearResult": {
+  "0": "ClassTypeNotMatch",
+  "1": "LowHeroLevel",
+  "2": "CannotEquipableItem",
+  "3": "InvalidItem",
+  "4": "Success"
+ },
+ "ETutorialType": {
+  "0": "WindowDrag",
+  "1": "MonsterWave",
+  "2": "GetFirstBox",
+  "3": "EquipItem",
+  "4": "OpenSkillUI",
+  "5": "UnlockCube",
+  "6": "Synthesis",
+  "7": "End"
+ },
+ "EUNITSTATE": {
+  "0": "NONE",
+  "1": "IDLE",
+  "2": "MOVE",
+  "3": "RETURN_TO_POSITION",
+  "4": "ATTACK",
+  "5": "REVIVE",
+  "6": "DIE"
+ },
+ "EWindowLayoutPreset": {
+  "0": "None",
+  "1": "LeftBottom",
+  "2": "CenterBottom",
+  "3": "RightBottom",
+  "4": "LeftTop",
+  "5": "CenterTop",
+  "6": "RightTop"
+ },
+ "EWindowZoomRate": {
+  "0": "Zoom1",
+  "1": "Zoom1_25",
+  "2": "Zoom1_5",
+  "3": "Zoom2",
+  "4": "Zoom3"
+ },
+ "EffectStackType": {
+  "0": "UseStack",
+  "1": "UseOnlyOne",
+  "2": "None"
+ },
+ "EffectTransformType": {
+  "0": "HitEffectPointType",
+  "1": "BoundCenterType",
+  "2": "HeadUpType",
+  "3": "FootCenterType"
+ },
+ "MODSOURCE": {
+  "0": "BASE",
+  "1": "ITEM",
+  "2": "ATTRIBUTE",
+  "3": "PASSIVE",
+  "4": "AccountStatus",
+  "5": "StatusEffect",
+  "6": "BuffSkill",
+  "7": "ENVIROUNMENT"
+ },
+ "MODTYPE": {
+  "0": "FLAT",
+  "1": "ADDITIVE",
+  "2": "MULTIPLICATIVE"
+ },
+ "ModStatExchangeType": {
+  "0": "Raw_Divide1000",
+  "1": "Raw_Divide100",
+  "2": "Divided"
+ },
+ "RESULTGRADETYPE": {
+  "-1": "Lower1Grade",
+  "-2": "Lower2Grade",
+  "0": "SameGrade",
+  "1": "Higher1Grade",
+  "2": "Higher2Grade"
+ },
+ "RepeatingAOESpawner.SpawnDirection": {
+  "0": "Center",
+  "1": "Left",
+  "2": "Right"
+ },
+ "SKILLTYPE": {
+  "0": "None",
+  "1": "Direct",
+  "128": "SpawnRandomMonster",
+  "16": "SpawnTurret",
+  "32": "SpawnTrap",
+  "4": "Projectile",
+  "64": "SpawnSomething",
+  "8": "Aoe"
+ },
+ "SLOTTYPE": {
+  "0": "BASEATTACK",
+  "1": "SKILL"
+ },
+ "SenderType": {
+  "0": "General",
+  "1": "News",
+  "2": "RegularReward",
+  "3": "UpdateReward",
+  "4": "IncidentCompensation"
+ },
+ "ServerState": {
+  "0": "None",
+  "1": "Offline",
+  "2": "Maintenance"
+ },
+ "SkillBuffType": {
+  "0": "Normal",
+  "1": "Buff"
+ },
+ "SkinSetItem.EType": {
+  "0": "Image",
+  "1": "Desc",
+  "2": "Price"
+ },
+ "StatType": {
+  "0": "NONE",
+  "1": "AttackDamage",
+  "10": "CooldownReduction",
+  "11": "SkillRangeExpansion",
+  "12": "FireResistance",
+  "13": "ColdResistance",
+  "14": "LightningResistance",
+  "15": "ChaosResistance",
+  "16": "DodgeChance",
+  "17": "BlockChance",
+  "18": "MaxDodgeChance",
+  "19": "MaxBlockChance",
+  "2": "AttackSpeed",
+  "20": "Multistrike",
+  "21": "HpLeech",
+  "22": "ProjectileCount",
+  "23": "HpRegenPerSec",
+  "24": "PhysicalDamagePercent",
+  "25": "FireDamagePercent",
+  "26": "ColdDamagePercent",
+  "27": "LightningDamagePercent",
+  "28": "ChaosDamagePercent",
+  "29": "MaxFireResistance",
+  "3": "CriticalChance",
+  "30": "MaxColdResistance",
+  "31": "MaxLightningResistance",
+  "32": "MaxChaosResistance",
+  "33": "AddHpPerHit",
+  "34": "DamageReduction",
+  "35": "PhysicalDamageReduction",
+  "36": "FireDamageReduction",
+  "37": "ColdDamageReduction",
+  "38": "LightningDamageReduction",
+  "39": "ChaosDamageReduction",
+  "4": "CriticalDamage",
+  "40": "DamageAbsorption",
+  "41": "DamageAddition",
+  "42": "PhysicalDamageAddition",
+  "43": "FireDamageAddition",
+  "44": "ColdDamageAddition",
+  "45": "LightningDamageAddition",
+  "46": "ChaosDamageAddition",
+  "47": "IncreaseExpAmount",
+  "48": "AdditionalExp",
+  "49": "CastSpeed",
+  "5": "MaxHp",
+  "50": "SkillHealIncrease",
+  "51": "SkillDurationIncrease",
+  "52": "AllElementalResistance",
+  "53": "IncreaseProjectileDamage",
+  "54": "IncreaseMeleeDamage",
+  "55": "IncreaseAreaOfEffectDamage",
+  "56": "IncreaseSummonDamage",
+  "57": "IncreaseProjectileSpeed",
+  "58": "AddHpPerKill",
+  "59": "AddAllSkillLevel",
+  "6": "Armor",
+  "60": "ElementalBlockChance",
+  "61": "ElementalDodgeChance",
+  "62": "MaxElementalBlockChance",
+  "63": "MaxElementalDodgeChance",
+  "64": "MaxAllElementalResistance",
+  "7": "MovementSpeed",
+  "8": "AreaOfEffect",
+  "9": "BaseAttackCountReduction"
+ },
+ "StatusEffectOverrideType": {
+  "0": "InitDuration",
+  "1": "NotOverride"
+ },
+ "StatusEffectType": {
+  "101": "Chill",
+  "102": "Freeze",
+  "103": "Ignite",
+  "104": "Shock",
+  "105": "Bleed",
+  "106": "Stun"
+ },
+ "TestEnum": {
+  "0": "None",
+  "1": "First",
+  "2": "Second"
+ },
+ "TextDisplayPosition": {
+  "0": "Center",
+  "1": "Top",
+  "2": "Bottom",
+  "3": "TopOffset",
+  "4": "CenterUp",
+  "5": "CenterDown"
+ },
+ "UI_Arrange.EArrangeSelectType": {
+  "0": "None",
+  "1": "Hero",
+  "2": "Pet"
+ },
+ "UI_Hero.EMainUI_TabType": {
+  "0": "Inventory",
+  "1": "Arrange",
+  "2": "Skin"
+ },
+ "bhv.EProjectileTarget": {
+  "0": "TargetMonster",
+  "1": "TargetHero"
+ },
+ "bhv.ProjectileType": {
+  "0": "Straight",
+  "1": "Curved",
+  "2": "Homing",
+  "3": "Bouncing"
+ },
+ "eOptionState": {
+  "0": "FirstTitle",
+  "1": "Language",
+  "2": "TermsOfService",
+  "3": "Position",
+  "4": "Setting",
+  "5": "Warning",
+  "6": "Character",
+  "7": "Loading",
+  "8": "Count",
+  "9": "LinuxWarning"
+ },
+ "fr.ArithmeticOperationType": {
+  "0": "None",
+  "1": "Add",
+  "2": "Sub",
+  "3": "Multiply",
+  "4": "Divide",
+  "5": "Modulo"
+ },
+ "fy.LogicalOperator": {
+  "0": "And",
+  "1": "Or"
+ },
+ "ie.ComponentMappings": {
+  "0": "XY",
+  "1": "XZ"
+ },
+ "if.Vector3Component": {
+  "0": "X",
+  "1": "Y",
+  "2": "Z"
+ },
+ "mk.HoverBehaviour": {
+  "0": "Custom",
+  "1": "Change_Color",
+  "2": "Change_Image",
+  "3": "Change_SetActive"
+ },
+ "mo.HoverBehaviour": {
+  "0": "Custom",
+  "1": "Change_Color",
+  "2": "Change_Color_Auto",
+  "3": "Change_Image",
+  "4": "Change_SetActive"
+ },
+ "pc.EReportType": {
+  "0": "ACTk_Speed",
+  "1": "ACTk_Time",
+  "10": "Trade_Beyond",
+  "11": "Trade_Celestial",
+  "12": "Trade_Divine",
+  "13": "Trade_Cosmic",
+  "14": "Grade_Arcana",
+  "15": "Grade_Beyond",
+  "16": "Grade_Celestial",
+  "17": "Grade_Divine",
+  "18": "Grade_Cosmic",
+  "19": "ItemLevel_50",
+  "2": "ACTk_Memory",
+  "20": "ItemLevel_80",
+  "21": "Level_50",
+  "22": "Level_80",
+  "23": "Gold_Massive",
+  "24": "Save_Tampered",
+  "3": "ACTk_Inject",
+  "4": "ACTk_Disabled",
+  "5": "Box_Normal_Rate",
+  "6": "Box_StageBoss_Rate",
+  "7": "Box_Normal_Volume",
+  "8": "Box_StageBoss_Volume",
+  "9": "Trade_Arcana"
+ },
+ "rp.ESource": {
+  "0": "Mail",
+  "1": "TradingStash",
+  "2": "Alchemy",
+  "3": "ActBossBoxObtain"
+ },
+ "wh.EBoxVisibleMode": {
+  "0": "AlwaysVisible",
+  "1": "HideOnSession",
+  "2": "AlwaysHidden"
+ },
+ "wh.EMailClaimResult": {
+  "0": "ClaimSuccess",
+  "1": "InValidMail",
+  "2": "CannotReceiveState",
+  "3": "ToManyItems"
+ },
+ "wh.vc.EItemGetSourceType": {
+  "0": "None",
+  "1": "QA",
+  "10": "UploadToSteam",
+  "11": "NewMail",
+  "12": "DownloadToSteam",
+  "13": "MailExchangeBox",
+  "14": "FirstClearRewardBox",
+  "15": "ClaimMail",
+  "16": "StackMigration",
+  "2": "Synthesis",
+  "3": "Offering",
+  "4": "Crafting",
+  "5": "OpenBox",
+  "6": "MonsterDieReward",
+  "7": "BackendPost",
+  "8": "UpdateInventoryNewBox",
+  "9": "BoxInventoryInit"
+ },
+ "zu.FollowMode": {
+  "0": "Instant",
+  "1": "MoveTowards",
+  "2": "SmoothDamp",
+  "3": "Lerp"
+ }
+}

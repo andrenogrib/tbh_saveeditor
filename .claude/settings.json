@@ -1,0 +1,66 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python tools/save_lab.py *)",
+      "Bash(python tools/extract_version.py *)",
+      "Bash(python tools/diff_versions.py *)",
+      "Bash(python tools/il2cpp_dump.py *)",
+      "Bash(python -m py_compile *)",
+      "Bash(python -m unittest *)",
+      "Bash(graphify query *)",
+      "Bash(graphify explain *)",
+      "Bash(graphify path *)",
+      "Bash(graphify god-nodes*)",
+      "Bash(graphify update *)",
+      "Bash(git status*)",
+      "Bash(git diff*)",
+      "Bash(git log*)",
+      "Bash(git show*)"
+    ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"$CLAUDE_PROJECT_DIR/.claude/hooks/tbh_guard.py\" session",
+            "timeout": 15
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit|NotebookEdit|Bash|PowerShell",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"$CLAUDE_PROJECT_DIR/.claude/hooks/tbh_guard.py\" pre",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "Bash|Grep",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "graphify hook-guard search",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "Read|Glob",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "graphify hook-guard read",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

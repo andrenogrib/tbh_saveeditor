@@ -1,0 +1,12 @@
+# O que fica FORA do grafo de conhecimento do codigo (graphify-out/).
+#
+# O graphify ja respeita o .gitignore. Aqui sai o que e DADO, nao codigo: tabelas e
+# textos extraidos do jogo, icones e extracoes de versao. Eles nao acrescentam estrutura
+# (chamadas, imports) e afogariam o grafo em milhares de nos de CSV/JSON.
+# O grafo do CODIGO DO JOGO (dump IL2CPP) e outro, fora do repo: ~/tbh_re/<versao>/.
+
+data/
+research/
+
+# skills e config do Claude: documentacao de processo, nao codigo do editor
+.claude/

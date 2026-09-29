@@ -1,0 +1,10 @@
+﻿CommonStatModKey,STATTYPE,MODTYPE,Value
+4510001,MaxHp,FLAT,1000
+4510002,MaxHp,FLAT,2000
+4510003,MaxHp,ADDITIVE,500
+4510004,MaxHp,ADDITIVE,1000
+4510005,MaxFireResistance,FLAT,5
+4510006,MaxAllElementalResistance,FLAT,3
+4510007,MaxAllElementalResistance,FLAT,5
+4510008,ElementalDodgeChance,FLAT,200
+4510009,ElementalDodgeChance,FLAT,400
