@@ -206,28 +206,35 @@ Cada passo termina com teste. Ordem pensada para nunca deixar o editor pior que 
 
 ---
 
-## 7. Decisões para o usuário
+## 7. Decisões (respondidas pelo usuário em 2026-09-29)
 
-Recomendação em negrito; `/portar-versao` pergunta o que ainda estiver aberto.
+Fechadas em duas rodadas de perguntas antes da `/portar-versao 1.2.8`. Valem para a implementação.
 
-1. **Seguir editando o save sabendo que o estúdio vê o estado (DataSnap) e pode bloquear a conta?**
-   É decisão sua; o plano reduz o risco, não o elimina. **Recomendo manter o escopo em encantamentos e
-   loadout de skills, com os limites reais do jogo.**
-2. Pets de DLC: **retirar a opção do editor** — desbloquear sem o DLC contorna conteúdo pago, e não é
-   algo que eu implemente (no seu save eles já vêm desbloqueados; nada muda para você).
-3. Cubo: **limitar a 1..100 e manter** — ou retirar a função, já que o nível vai em toda requisição de
-   consumo e libera o Market no 10?
-4. Herói: nível **1..101**; `AbilityPoint` no **modo estrito** (`AP ≤ nível − alocados`) ou só teto de tipo?
-5. `EnchantVersion` em encantamento novo: **`null`** (como os 243 atuais) ou a versão do jogo (o que o
-   jogo grava ao rolar)?
-6. Auto-build: continuar em **"tier máximo, valor máximo"** (padrão que identifica os encantamentos
-   feitos pelo editor) ou rolar dentro da faixa como o jogo?
-7. Runas: **as runas de drop/baú ficam fora do "maximizar"** — no save atual só sobram essas 20
-   (custam 28,7 bilhões de ouro no jogo) e elas aumentam a geração de itens negociáveis no Steam
-   Market; isso eu não implemento. As demais continuam elevadas até `MaxLevel`.
-8. Progresso: **somente leitura** (recomendado) ou também "reparar posição" validado?
-9. Versionamento: commitar `tools/`, `.claude/`, `CLAUDE.md`, `CONTEXT.md`, `research/1.2.8/` e este
-   doc antes de começar a migração (a `/portar-versao` pede árvore limpa)?
+**Escopo:** completo com travas — o editor mantém todas as funções de hoje, dentro dos limites
+reais do jogo e com avisos. Fora do editor, sempre: criar/duplicar itens, estágios, skins,
+`playTime`, `aggregateSaveDatas`/estatísticas, desbloquear pet de DLC, elevar runas de baú.
+
+| Área | Decisão |
+|---|---|
+| Encantamento — dados | tabelas da 1.2.8; validação completa (RecipeType = tipo do slot, StatType/ModType = tabela, faixa e passo, `Tier ≥ 1`, slot permitido pela grade) |
+| Encantamento — `EnchantVersion` | encantamento novo ou alterado recebe a versão do save carregado (`account.version`, ex. `"1.2.8"`); slot não alterado mantém o valor que tinha |
+| Auto-build | tier máximo e valor máximo (como hoje); não reescreve slot igual; `*AppliedTotalCount` só sobe em mudança real |
+| Encantamento legado (fora da faixa 1.2.8) | mostrar com aviso; nunca alterar sozinho |
+| Herói — nível | 1..101 (`max(LevelInfoData.Level)+1`) |
+| Herói — EXP | editável só abaixo de 101, até `ExpForLevelUp` do nível; no 101 só exibição |
+| Herói — `AbilityPoint` | modo estrito: livres ≤ nível − alocados (na conta atual, travado em 0) |
+| Herói bloqueado (`IsUnLock=false`) | não editável (nível, pontos, skills) |
+| Skills | só ativas do herói, aprendidas (atributo ≥ 1); 3º slot só com a runa 27 (`UnlockSkillSlotCount`); `len == 3`, vazio = −1 |
+| Ouro | 0..10¹³ (como hoje); aviso acima de 100 M (vai no snapshot; destoa do `total_gold_earned` da Steam) |
+| Cubo | nível 1..100; `Exp` coerente (< `ExpForLevelUp` do nível; 999.999.999 no 100) |
+| Pets 1001–1005 (abate) | travar/destravar com aviso (o jogo pode travar de novo sem os 5000 abates; trava sem efeito se a condição está cumprida) |
+| Pets 6001–6003 (DLC) | só exibição ("DLC — gerenciado pela Steam") |
+| Runas | "maximizar" eleva até `MaxLevel` tudo exceto a família baú (`STATTYPE` com `Chest`: chance de drop, capacidade, auto-abertura, abrir todos); mensagem honesta quando nada muda |
+| Progresso | painel só de leitura (estágio atual, desbloqueado até, intensidade da Peste), nomes da tabela |
+| Salvar | recusado com o jogo aberto ou se o arquivo mudou desde o load; gravação atômica; aviso/bloqueio de item com transação pendente |
+| Servidor local | só aceita requisições da própria página (origem + token) |
+| UI | aviso fixo: "o que você grava vai para o servidor do jogo na próxima abertura" |
+| Versionamento | estudo commitado na `estudo-1.2.8`; migração na `port-1.2.8` (criada a partir dela), commits locais, push só a pedido |
 
 ---
 
