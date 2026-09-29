@@ -120,7 +120,7 @@ economia do Market.
 |---|---|---|---|
 | Encantamento dentro das tabelas da 1.2.8 | **baixo–médio** | indistinguível de legítimo; aparece no DataSnap; item encantado não pode ir ao Market | manter, com dados 1.2.8 e validação completa |
 | Skills (loadout) | **baixo** | escolha reversível | manter, validando skill aprendida/slot 3 (runa 27) |
-| Runas até `MaxLevel` | **médio–baixo** | 20 runas novas mexem em drop de caixas (itens Steam) | manter, mas listar o que muda e pedir confirmação; nunca acima de `MaxLevel` |
+| Runas | **alto** para as que faltam | no save atual as 197 runas antigas já estão no máximo; as 20 que faltam (todas novas da 1.2.x) só aumentam chance de drop, capacidade e auto-abertura de baús — baús que o servidor processa e cujos itens são negociáveis no Steam Market; completá-las no jogo custa 28,7 bilhões de ouro; a contagem de caixas tem relatório próprio (`Box_*_Rate/Volume`) que não depende do tempo de jogo | fora do "maximizar": runas de drop/baú não são elevadas pelo editor; nunca acima de `MaxLevel` |
 | Ouro | **médio** | aparece no DataSnap e diverge de `total_gold_earned` da Steam; `Gold_Massive` só para contas com pouco tempo de jogo (não a sua) | avisar acima de 100 M |
 | Herói (nível/EXP/pontos) | **médio** | aparece no DataSnap e em `max_hero_level` da Steam (a cada 3 min); `Level_50/80` só para contas com pouco tempo de jogo; nível > 101 fica e trava level-ups | nível 1..101; pontos dentro do orçamento do jogo |
 | Cubo | **médio** (alto se usado para passar do nível 10) | nível vai no DataSnap, em `cube_level` da Steam e nas requisições de consumo (não provado que o servidor use); nível 10 libera o Trade Ship/Steam Market; o jogo corrige nível > 100 no load, mas **não** o Exp | limitar a 1..100, gravar `Exp` coerente (999.999.999 no 100) e avisar; não usar para liberar o Market |
@@ -155,7 +155,7 @@ P2-8 `save_lab coverage` não checava skills/pets/atributos/cubo; P2-10 docs apo
 | P1-6 | `set_cube` aceita 1..999 (máx. 100); o jogo corrige o nível no load, mas não o `Exp` (float) | `server.py:391`, `app.js:365` | teto = `max(CubeLevelInfoData.Level)`; no nível máximo gravar `Exp` = `ExpForLevelUp` (999.999.999) |
 | P1-7 | "Desbloquear todos" oferece pets de DLC sem checar posse | `server.py:359-373`, `app.js:393-401` | ler `PetInfoData`; não oferecer DLC (mostrar "DLC — gerenciado pela Steam") |
 | P1-8 | `/api/save` não checa jogo aberto nem se o arquivo mudou desde o load; escrita não atômica | `server.py:400-415`, `es3.py:114-121` | recusar com o jogo aberto; guardar mtime/hash no load; `tmp` + `os.replace` |
-| P1-9 | com dados 1.2.8, `max_runes` sobe 20 runas de drop/baú (Plaguelands) sem aviso | `server.py:374-383` | listar e confirmar antes |
+| P1-9 | com dados 1.00.17, `max_runes` não faz nada no save atual (as 51 runas da 1.2.x são "sem dados"; as 197 antigas já estão no máximo); com dados 1.2.8 ele subiria as 20 restantes, todas de drop/capacidade/auto-abertura de baús (28,7 bi de ouro no jogo) | `server.py:374-383` | excluir do "maximizar" as runas cujo `STATTYPE` é de drop/baú (`DropChance*`, `MaxAmount*Chest`, `ReduceAutoOpen*`); mostrar o que ficou de fora e por quê |
 | P2-1 | `set_enchant` estende `EnchantData` antes de validar (erro 400 deixa o item mudado) | `server.py:238-245` | validar antes de mutar |
 | P2-2 | sem guarda para transações pendentes (`pendingEnchantList`, `pendingItemRestorationList`, `AlchemyPending*`, `pendingExchange` — este apareceu não nulo em 2 dos 17 saves 1.2.8, é normal no jogo). `backendPostList` é só cache de correio | `server.py:225-233, 400-415` | checar **na hora de salvar**; avisar/bloquear edição do item citado |
 | P2-3 | `set_skills` não valida skill aprendida nem slot 3 (runa 27); herói bloqueado editável | `server.py:300-320` | usar SkillInfoData + AttributeInfoData |
@@ -171,6 +171,7 @@ P2-8 `save_lab coverage` não checava skills/pets/atributos/cubo; P2-10 docs apo
 | P3-6 | `data/` sem `VERSION`; comentários citam 1.00.17 | `data/`, `es3.py:15`, README | gravar `data/VERSION` na promoção |
 | P3-7 | encantar pelo editor não atualiza as estatísticas (`aggregateSaveDatas` tipos 10–12), que o jogo soma ao encantar | `server.py` | só registrar; editar agregados não vale o risco |
 | P3-8 | a regra "9 dígitos + 900" do `base_key` parece morta, mas o jogo trata `ItemKey` > 9.999.999 (id de item Steam) | `gamedata.py:158` | **manter** a regra e tratar esses itens como somente leitura |
+| P3-9 | "Maximizar runas" mostra aviso verde de sucesso mesmo com 0 alteradas ("0 runa(s) elevadas ao máximo") | `app.js:413` | com 0 alteradas, aviso neutro dizendo por quê (desconhecidas / já no máximo / excluídas) |
 
 ---
 
@@ -191,7 +192,7 @@ Cada passo termina com teste. Ordem pensada para nunca deixar o editor pior que 
    validação completa (`RecipeType` = tipo do slot, `StatType/ModType` = tabela, `Tier ≥ 1`, slot
    permitido, valor alcançável `Min + k·Interval`).
 4. **Limites reais e conteúdo pago** — P1-5, P1-6, P2-4 (limites vindos das tabelas, não de
-   constantes), P1-7 (sem desbloqueio de DLC), P2-3 (skills), P1-9 (runas com confirmação).
+   constantes), P1-7 (sem desbloqueio de DLC), P2-3 (skills), P1-9 (runas de drop/baú fora do "maximizar"), P3-9.
 5. **Segurança do Salvar** — P1-8 (jogo aberto, mtime/hash, escrita atômica), P2-2 (pendências),
    P2-9 (origem das requisições).
 6. **UI e avisos** — banner "tudo o que você grava é enviado ao servidor na próxima abertura";
@@ -221,7 +222,9 @@ Recomendação em negrito; `/portar-versao` pergunta o que ainda estiver aberto.
    jogo grava ao rolar)?
 6. Auto-build: continuar em **"tier máximo, valor máximo"** (padrão que identifica os encantamentos
    feitos pelo editor) ou rolar dentro da faixa como o jogo?
-7. Runas: `max_runes` pedindo confirmação com a lista (**recomendado**) ou excluir as runas de drop/baú?
+7. Runas: **as runas de drop/baú ficam fora do "maximizar"** — no save atual só sobram essas 20
+   (custam 28,7 bilhões de ouro no jogo) e elas aumentam a geração de itens negociáveis no Steam
+   Market; isso eu não implemento. As demais continuam elevadas até `MaxLevel`.
 8. Progresso: **somente leitura** (recomendado) ou também "reparar posição" validado?
 9. Versionamento: commitar `tools/`, `.claude/`, `CLAUDE.md`, `CONTEXT.md`, `research/1.2.8/` e este
    doc antes de começar a migração (a `/portar-versao` pede árvore limpa)?
