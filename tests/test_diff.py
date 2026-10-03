@@ -1,7 +1,7 @@
 """Previa do Salvar: o que vai mudar no arquivo, em linhas legiveis (docs/ROADMAP.md, item 2)."""
 import collections
 
-from tests.support import SaveCase
+from tests.support import SaveCase, server
 from core import es3
 
 
@@ -57,6 +57,22 @@ class DiffTest(SaveCase):
         lines = self.changes()["changes"]
         self.assertEqual([c["area"] for c in lines], ["Outros"])
         self.assertIn("useStorage", lines[0]["text"])
+
+    def test_reparo_e_campos_secundarios_aparecem(self):
+        """Salvar so de reparo (EnchantCount errado no arquivo) mostra o que vai mudar."""
+        sf = es3.SaveFile.load(self.path)
+        it = next(x for x in sf.player["itemSaveDatas"] if str(x["ItemKey"]) in server.GD.gear
+                  and any(e.get("MaterialKey") for e in x.get("EnchantData", [])))
+        it["EnchantCount"] = [0, 0, 0]  # arquivo com contador quebrado (editor antigo)
+        sf.save(self.path, backup=False)
+        self.ok("POST", "/api/load", {"path": self.path, "locale": "pt"})
+        lines = self.changes()["changes"]
+        self.assertEqual([c["area"] for c in lines], ["Encantamentos"])
+        self.assertIn("EnchantCount", lines[0]["text"])
+        pet = server.State.save.player["PetSaveData"][0]
+        pet["IsViewed"] = not pet["IsViewed"]
+        self.assertEqual(sum(1 for c in self.changes()["changes"] if c["area"] == "Pets"), 1)
+        self.assertEqual(self.ok("POST", "/api/save", {})["fixed"], 1)
 
     def test_depois_de_salvar_nada_muda_e_arquivo_regravado_avisa(self):
         cur = self.save.player["currenySaveDatas"][0]

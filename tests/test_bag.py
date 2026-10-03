@@ -55,3 +55,7 @@ class BagTest(SaveCase):
         self.assertTrue(moved["readOnly"])
         code, _res = call("POST", "/api/set_enchant", {"uniqueId": row["uniqueId"], "slot": 0, "clear": True})
         self.assertEqual(code, 400)
+        it = next(x for x in self.save.player["itemSaveDatas"] if str(x["UniqueId"]) == row["uniqueId"])
+        it["EnchantCount"] = [9, 9, 9]  # o reparo do Salvar tambem nao mexe em item do Trade Ship
+        self.ok("POST", "/api/save", {})
+        self.assertEqual(it["EnchantCount"], [9, 9, 9])

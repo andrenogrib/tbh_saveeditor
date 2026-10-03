@@ -102,12 +102,12 @@ def list_backups():
     return out
 
 
-def repair_counts(player, pending_uids):
+def repair_counts(player, locked):
     """EnchantCount = slots ocupados, so nos itens que o editor pode editar (item Steam, fora
-    das tabelas ou com transacao pendente fica como esta). Devolve quantos itens mudaram."""
+    das tabelas, com transacao pendente ou no Trade Ship fica como esta). Devolve quantos mudaram."""
     fixed = 0
     for it in player.get("itemSaveDatas", []):
-        if GD.enchantable(it["ItemKey"]) or str(it.get("UniqueId")) in pending_uids:
+        if GD.enchantable(it["ItemKey"]) or str(it.get("UniqueId")) in locked:
             continue
         before = it.get("EnchantCount")
         GD.recount_enchants(it)
@@ -156,6 +156,11 @@ def item_places():
             if u != "0" and (u not in where or label == "Trade Ship"):
                 where[u] = label
     return where
+
+
+def locked_uids():
+    """UniqueIds que o editor nao mexe: transacao pendente ou estoque do Trade Ship."""
+    return pending_summary()[1] | {u for u, w in item_places().items() if w == "Trade Ship"}
 
 
 def item_lock(it):
@@ -565,7 +570,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 return self._send(400, {"error": "não deu para ler o arquivo em disco: %s" % e})
             acc = json.loads(json.dumps(State.save.account))
             ply = json.loads(json.dumps(State.save.player))
-            repair_counts(ply, pending_summary()[1])
+            repair_counts(ply, locked_uids())
             return self._send(200, {"changes": changes.describe(GD, disk.account, disk.player, acc, ply, State.locale),
                                     "fileChanged": stamp_of(raw) != State.stamp})
         if p == "/api/backups":
@@ -834,8 +839,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
             if now != State.stamp:
                 return self._send(409, {"error": "o arquivo mudou desde que foi carregado (o jogo salvou?): "
                                                  "carregue de novo e refaça a edição"})
-            names, pend = pending_summary()
-            fixed = repair_counts(State.save.player, pend)
+            names, _uids = pending_summary()
+            fixed = repair_counts(State.save.player, locked_uids())
             try:  # sem ponto de volta, nada e gravado
                 bid = make_restore_point(State.path, "antes de Salvar")
             except OSError as e:

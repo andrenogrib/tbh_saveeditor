@@ -24,8 +24,11 @@ class GuardTest(unittest.TestCase):
         for text in ("cp edited.es3 " + LIVE,
                      "cp %s %s" % (COPY, LIVE),
                      "S=%s && rm $S" % LIVE,
-                     "cp x.es3 ~/tbh_re/../AppData/LocalLow/TesseractStudio/TaskbarHero/SaveFile_Live.es3"):
+                     "cp x.es3 ~/tbh_re/../AppData/LocalLow/TesseractStudio/TaskbarHero/SaveFile_Live.es3",
+                     'cp %s "$SAVE_DIR/"' % COPY,          # copia para destino variavel
+                     "mv %s $DEST" % COPY):
             self.assertTrue(asks("Bash", text), text)
+        self.assertTrue(asks("PowerShell", "Copy-Item %s -Destination $env:X" % COPY))
         self.assertTrue(asks("Write", r"C:\Users\andre\AppData\LocalLow\TesseractStudio\TaskbarHero\SaveFile_Live.es3"))
 
     def test_copias_em_tbh_re_passam(self):

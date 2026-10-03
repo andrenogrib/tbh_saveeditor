@@ -147,7 +147,7 @@ def copy_dest(seg):
     return pos[-1] if len(pos) >= 2 else None
 
 
-def segment_writes(seg, cmd_mentions, protected_cwd):
+def segment_writes(seg, cmd_mentions, protected_cwd, copy_hint=False):
     if not seg or re.fullmatch(r"""(["'])[^"']*\1""", seg):  # vazio ou so um literal
         return False
     low = seg.lower()
@@ -173,13 +173,17 @@ def segment_writes(seg, cmd_mentions, protected_cwd):
         return True
     if mentions(seg) or protected_cwd:
         return True
-    return cmd_mentions and ("$" in seg or "%" in seg or "~" in seg) and bool(WRITE_VERBS.search(seg))
+    var = "$" in seg or "%" in seg or (cmd_mentions and "~" in seg)
+    return (cmd_mentions or copy_hint) and var and bool(WRITE_VERBS.search(seg))
 
 
 def shell_may_write(cmd, cwd=""):
     protected_cwd = mentions(cwd)
     cmd_mentions = mentions(cmd)
-    if not (cmd_mentions or protected_cwd):
+    # copia do save em tbh_re (mesmo nome do vivo): ainda pede se a escrita vai para um destino
+    # variavel ($X, %X%), que pode ser a pasta do jogo
+    copy_hint = "savefile_live" in (cmd or "").lower()
+    if not (cmd_mentions or protected_cwd or copy_hint):
         return False
     # codigo (corpo de heredoc, "python -c ...") e julgado pelo que escreve, nao por citar a pasta
     bodies = [m.group(3) for m in HEREDOC.finditer(cmd)]
@@ -195,7 +199,7 @@ def shell_may_write(cmd, cwd=""):
         if re.match(r"^(?:cd|pushd|set-location|sl|chdir)\b", seg, re.I) and mentions(seg):
             protected_cwd = True
             continue
-        if segment_writes(seg, cmd_mentions, protected_cwd):
+        if segment_writes(seg, cmd_mentions, protected_cwd, copy_hint):
             return True
     return False
 
