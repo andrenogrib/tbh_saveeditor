@@ -30,6 +30,15 @@ A local web app (runs in your browser) to edit **Taskbar Hero** save files, with
   much gold that would cost in the game).
 - **Progress** (*Player* tab): current stage, unlocked stage and Plague intensity, read-only —
   the game server is the authority on progress.
+- **Bag and stash** (last entry of the hero list): enchant gear that is not equipped. Items in
+  the Trade Ship stock are read-only.
+- **Build summary** (hero panel): sum of the equipped items' enchantments per stat.
+- **Save preview**: *Save to game* first lists every change against the file on disk (gold,
+  heroes, pets, runes, cube, enchantments, anything else by path) and asks for confirmation.
+- **Restore points** (*Restore points* tab): before every save (and every restore) the editor
+  copies the current file to `~/tbh_re/editor_backups/<date_time>/` (newest 30 kept;
+  `TBH_EDITOR_BACKUPS` changes the folder). Restoring needs the game closed and is itself
+  undoable.
 
 Out of scope, always: creating/duplicating items, stages, skins, play time and statistics,
 unlocking DLC pets.

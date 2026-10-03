@@ -29,6 +29,10 @@ http://127.0.0.1:8765. Python stdlib no runtime; UI em `web/` (HTML/JS puro). Us
   carregue uma cópia pelo campo de caminho da UI ou `POST /api/load {"path": "<cópia>"}` e
   confira `GET /api/state` antes de salvar. `/api/*` exige o cabeçalho `X-TBH-Token` (vem na
   página, `<meta name="tbh-token">`) e Host local.
+- Cada Salvar/Restaurar do editor copia antes o arquivo atual para `~/tbh_re/editor_backups/`
+  (`TBH_EDITOR_BACKUPS`; 30 mais novos). Os testes trocam `server.BACKUP_DIR` por uma pasta
+  temporária; servidor de teste de pé usa `TBH_EDITOR_BACKUPS` numa pasta de rascunho, para não
+  encher a lista real do usuário.
 - A instalação do jogo (`steamapps/common/TaskbarHero`) é somente leitura.
 - `.claude/hooks/tbh_guard.py` pede confirmação quando o **texto** de uma tool call cita essas
   pastas com cara de escrita. Ele não vê HTTP para o editor nem caminhos montados em runtime; as
