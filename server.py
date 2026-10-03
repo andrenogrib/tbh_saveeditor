@@ -5,11 +5,15 @@ com validacao pelas tabelas do jogo, e recalcula o SystemInfo ao salvar.
 
 Uso:  python server.py        (abre http://127.0.0.1:8765 no navegador)
 """
+import hashlib
+import hmac
 import http.server
 import json
 import os
+import secrets
 import socketserver
 import struct
+import sys
 import threading
 import urllib.parse
 import webbrowser
@@ -17,12 +21,17 @@ import webbrowser
 from core import es3, gamedata, autobuild
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, os.path.join(ROOT, "tools"))
+import tbh_paths  # noqa: E402  (jogo aberto e pastas do jogo; so stdlib)
 DATA = os.path.join(ROOT, "data")
 WEB = os.path.join(ROOT, "web")
 ICONS = os.path.join(DATA, "icons")
 PORT = 8765
 
 GD = gamedata.GameData(DATA)
+# a pagina servida recebe este token; /api/* exige o token e Host/Origin locais (P2-9)
+TOKEN = secrets.token_urlsafe(24)
+ALLOWED_HOSTS = ("127.0.0.1:%d" % PORT, "localhost:%d" % PORT)
 SLOT_LABELS = ["Decoration", "Decoration", "Engraving", "Engraving", "Inscription", "Inscription"]
 
 
@@ -30,6 +39,45 @@ class State:
     save = None
     path = None
     locale = "pt"
+    stamp = None  # (tamanho, sha256) do arquivo no load: o Salvar recusa se ele mudou
+
+
+def file_stamp(path):
+    with open(path, "rb") as fh:
+        data = fh.read()
+    return len(data), hashlib.sha256(data).hexdigest()
+
+
+def pending_summary():
+    """Transacoes que o jogo ainda vai concluir com o servidor -> (nomes, UniqueIds citados).
+    O editor nao edita item citado (P2-2)."""
+    p = State.save.player
+    names, uids = [], set()
+    for x in p.get("pendingEnchantList") or []:
+        uids.update(str(x.get(k)) for k in ("GearUniqueId", "MaterialUniqueId"))
+    for x in p.get("pendingItemRestorationList") or []:
+        uids.add(str(x.get("UniqueId")))
+    uids.update(str(x) for x in p.get("AlchemyPendingIdList") or [])
+    ex = p.get("pendingExchange")
+    ex_open = isinstance(ex, dict) and (ex.get("resultItem") not in (None, -1, 0) or bool(ex.get("items")))
+    if ex_open:
+        uids.update(str(x) for x in ex.get("items") or [])
+    for k in ("pendingEnchantList", "pendingItemRestorationList", "AlchemyPendingIdList"):
+        if p.get(k):
+            names.append(k)
+    if ex_open:
+        names.append("pendingExchange")
+    return names, uids
+
+
+def item_lock(it):
+    """None se o item pode ser encantado pelo editor; senao o motivo."""
+    why = GD.enchantable(it["ItemKey"])
+    if why:
+        return why
+    if str(it.get("UniqueId")) in pending_summary()[1]:
+        return "item com transação pendente no servidor — abra o jogo para concluir antes de editar"
+    return None
 
 
 def default_save_path():
@@ -72,7 +120,7 @@ def item_payload(it):
         "maxSlots": GD.max_slots(ikey),
         "enchantCount": it.get("EnchantCount"),
         "enchants": enchants,
-        "readOnly": GD.enchantable(ikey),
+        "readOnly": item_lock(it),
     }
 
 
@@ -240,7 +288,7 @@ def player_payload():
 
 # ---------------- HTTP handler ----------------
 class Handler(http.server.BaseHTTPRequestHandler):
-    def _send(self, code, body, ctype="application/json"):
+    def _send(self, code, body, ctype="application/json", headers=None):
         if isinstance(body, (dict, list)):
             body = json.dumps(body, ensure_ascii=False).encode("utf-8")
         elif isinstance(body, str):
@@ -248,8 +296,26 @@ class Handler(http.server.BaseHTTPRequestHandler):
         self.send_response(code)
         self.send_header("Content-Type", ctype)
         self.send_header("Content-Length", str(len(body)))
+        for k, v in (headers or {}).items():
+            self.send_header(k, v)
         self.end_headers()
         self.wfile.write(body)
+
+    def _guard(self, api, post):
+        """Mensagem de recusa (403) ou None. Host local em tudo (contra DNS rebinding);
+        nas rotas /api/, Origin local, token da pagina e JSON no POST (P2-9)."""
+        if (self.headers.get("Host") or "").lower() not in ALLOWED_HOSTS:
+            return "host não permitido"
+        if not api:
+            return None
+        origin = (self.headers.get("Origin") or "").lower()
+        if origin and origin not in ["http://" + h for h in ALLOWED_HOSTS]:
+            return "origem não permitida"
+        if not hmac.compare_digest(self.headers.get("X-TBH-Token") or "", TOKEN):
+            return "token inválido — recarregue a página do editor"
+        if post and not (self.headers.get("Content-Type") or "").lower().startswith("application/json"):
+            return "Content-Type deve ser application/json"
+        return None
 
     def _file(self, path, ctype):
         if not os.path.exists(path):
@@ -265,8 +331,13 @@ class Handler(http.server.BaseHTTPRequestHandler):
         u = urllib.parse.urlparse(self.path)
         q = urllib.parse.parse_qs(u.query)
         p = u.path
+        err = self._guard(p.startswith("/api/"), False)
+        if err:
+            return self._send(403, {"error": err})
         if p == "/" or p == "/index.html":
-            return self._file(os.path.join(WEB, "index.html"), "text/html; charset=utf-8")
+            with open(os.path.join(WEB, "index.html"), encoding="utf-8") as fh:
+                page = fh.read().replace("__TBH_TOKEN__", TOKEN)
+            return self._send(200, page, "text/html; charset=utf-8", {"Cache-Control": "no-store"})
         if p == "/app.js":
             return self._file(os.path.join(WEB, "app.js"), "application/javascript; charset=utf-8")
         if p == "/style.css":
@@ -275,22 +346,34 @@ class Handler(http.server.BaseHTTPRequestHandler):
             key = GD.base_key(p[len("/icons/"):].replace(".png", ""))
             return self._file(os.path.join(ICONS, "%s.png" % key), "image/png")
         if p == "/api/state":
-            return self._send(200, {"loaded": State.save is not None, "path": State.path or default_save_path(),
-                                    "locale": State.locale})
+            path = State.path or default_save_path()
+            return self._send(200, {"loaded": State.save is not None, "path": path, "locale": State.locale,
+                                    "gameRunning": tbh_paths.game_running(),
+                                    "isGameSave": bool(path) and tbh_paths.is_protected(path),
+                                    "dataVersion": GD.version,
+                                    "saveVersion": State.save.account.get("version") if State.save else None})
         if p == "/api/heroes":
             if not State.save:
                 return self._send(400, {"error": "save nao carregado"})
             return self._send(200, heroes_payload())
         if p == "/api/materials":
-            slot = int(q.get("slot", ["0"])[0])
-            mtype = GD.slot_material_type(slot)
+            try:
+                slot = int(q.get("slot", ["0"])[0])
+                if slot < 0:
+                    raise IndexError
+                mtype = GD.slot_material_type(slot)
+            except (ValueError, IndexError):
+                return self._send(400, {"error": "slot inválido"})
             mats = [{"key": int(k), "name": GD.name(k, State.locale),
                      "icon": "/icons/%s" % k if GD.has_icon(k) else None}
                     for k in GD.materials_by_type[mtype]]
             mats.sort(key=lambda m: m["name"])
             return self._send(200, {"type": mtype, "materials": mats})
         if p == "/api/options":
-            return self._send(200, options_payload(q["material"][0], int(q["item"][0])))
+            try:
+                return self._send(200, options_payload(q["material"][0], int(q["item"][0])))
+            except (KeyError, IndexError, ValueError):
+                return self._send(400, {"error": "parâmetros material e item são obrigatórios"})
         if p == "/api/player":
             if not State.save:
                 return self._send(400, {"error": "save nao carregado"})
@@ -300,15 +383,24 @@ class Handler(http.server.BaseHTTPRequestHandler):
     # ---- POST ----
     def do_POST(self):
         u = urllib.parse.urlparse(self.path)
-        length = int(self.headers.get("Content-Length", 0))
-        body = json.loads(self.rfile.read(length) or b"{}")
         p = u.path
+        err = self._guard(True, True)
+        if err:
+            return self._send(403, {"error": err})
+        try:
+            length = int(self.headers.get("Content-Length", 0))
+            body = json.loads(self.rfile.read(length) or b"{}")
+            if not isinstance(body, dict):
+                raise ValueError
+        except ValueError:
+            return self._send(400, {"error": "corpo JSON inválido"})
         if p == "/api/load":
             path = body.get("path") or default_save_path()
             State.locale = body.get("locale", State.locale)
             try:
                 State.save = es3.SaveFile.load(path)
                 State.path = path
+                State.stamp = file_stamp(path)
             except Exception as e:
                 return self._send(400, {"error": "falha ao carregar: %s" % e})
             return self._send(200, heroes_payload())
@@ -324,9 +416,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 return self._send(400, {"error": "slot inválido"})
             if not 0 <= slot < len(SLOT_LABELS):
                 return self._send(400, {"error": "slot inválido"})
-            why = GD.enchantable(it["ItemKey"])
+            why = item_lock(it)
             if why:
-                return self._send(400, {"error": why})
+                return self._send(409 if "pendente" in why else 400, {"error": why})
             # valida tudo antes de mexer no item (P2-1)
             if body.get("clear"):
                 if GD.clear_enchant(it, slot):  # Extracao: nao conta aplicacao
@@ -362,7 +454,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 hk = h.get("heroKey")
                 for uid in h.get("equippedItemIds", []):
                     it = items_by_uid.get(str(uid))
-                    if not it:
+                    if not it or item_lock(it):
                         continue
                     plan = autobuild.plan_item(GD, it["ItemKey"], hk, mode=mode,
                                                overwrite=overwrite, current=it.get("EnchantData", []))
@@ -534,8 +626,18 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if p == "/api/save":
             if not State.save:
                 return self._send(400, {"error": "nada carregado"})
-            # repara EnchantCount inconsistente em TODOS os itens (corrige bugs antigos
-            # onde o encantamento aparecia mas nao tinha efeito).
+            # P1-8: o jogo regrava o save a cada 3 min e ao fechar; com ele aberto, a edicao some
+            if tbh_paths.is_protected(State.path) and tbh_paths.game_running() is not False:
+                return self._send(409, {"error": "o Taskbar Hero está aberto (ou não deu para conferir): "
+                                                 "feche o jogo antes de salvar"})
+            try:
+                now = file_stamp(State.path)
+            except OSError:
+                now = None
+            if now != State.stamp:
+                return self._send(409, {"error": "o arquivo mudou desde que foi carregado (o jogo salvou?): "
+                                                 "carregue de novo e refaça a edição"})
+            # repara EnchantCount diferente dos slots ocupados em todos os itens
             fixed = 0
             for it in State.save.player.get("itemSaveDatas", []):
                 before = it.get("EnchantCount")
@@ -543,10 +645,16 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 if it["EnchantCount"] != before:
                     fixed += 1
             try:
-                State.save.save(State.path, backup=True)
+                State.save.save(State.path, backup=True)  # atomico: .tmp + os.replace
+                State.stamp = file_stamp(State.path)
             except Exception as e:
                 return self._send(500, {"error": str(e)})
-            return self._send(200, {"ok": True, "path": State.path, "backup": State.path + ".bak", "fixed": fixed})
+            res = {"ok": True, "path": State.path, "backup": State.path + ".bak", "fixed": fixed}
+            names, _uids = pending_summary()
+            if names:  # P2-2: o jogo conclui essas transacoes com o servidor na proxima abertura
+                res["warning"] = ("o save tem transações pendentes (%s); os itens citados não foram editados"
+                                  % ", ".join(names))
+            return self._send(200, res)
         return self._send(404, {"error": "rota desconhecida"})
 
 

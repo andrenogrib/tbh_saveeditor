@@ -10,9 +10,10 @@ import hmac
 import json
 import os
 import secrets
+import shutil
 from hashlib import pbkdf2_hmac
 
-# --- chaves/constantes (Taskbar Hero 1.00.17) ---
+# --- chaves/constantes (extraidas da 1.00.17; conferidas da 1.00.11 a 1.2.8) ---
 ES3_PASSWORD = "emuMqG3bLYJ938ZDCfieWJ"          # senha de criptografia do Easy Save 3
 PBKDF2_ITERS = 100
 KEY_SIZE = 16
@@ -112,10 +113,15 @@ class SaveFile:
         return es3_encrypt(text.encode("utf-8"), self.password)
 
     def save(self, path, backup=True):
+        """Grava atomicamente: escreve <path>.tmp, guarda o atual em <path>.bak e troca com
+        os.replace (o arquivo nunca fica pela metade)."""
         blob = self.to_es3_bytes()
-        if backup and os.path.exists(path):
-            with open(path, "rb") as s, open(path + ".bak", "wb") as d:
-                d.write(s.read())
-        with open(path, "wb") as fh:
+        tmp = path + ".tmp"
+        with open(tmp, "wb") as fh:
             fh.write(blob)
+            fh.flush()
+            os.fsync(fh.fileno())
+        if backup and os.path.exists(path):
+            shutil.copyfile(path, path + ".bak")
+        os.replace(tmp, path)
         return path

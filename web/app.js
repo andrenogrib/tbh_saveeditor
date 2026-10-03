@@ -5,9 +5,12 @@ const el = (t, c, h) => { const e = document.createElement(t); if (c) e.classNam
 let STATE = { heroes: [], hero: null, item: null, locale: "pt", materialsCache: {}, tab: "equip", loaded: false };
 const fmt = (n) => (+n).toLocaleString("pt-BR");
 
+// token da sessao do servidor (vem na pagina); /api/* recusa sem ele
+const TOKEN = (document.querySelector('meta[name="tbh-token"]') || {}).content || "";
+
 async function api(method, path, body) {
   const r = await fetch(path, {
-    method, headers: { "Content-Type": "application/json" },
+    method, headers: { "Content-Type": "application/json", "X-TBH-Token": TOKEN },
     body: body ? JSON.stringify(body) : undefined,
   });
   const data = await r.json().catch(() => ({}));
