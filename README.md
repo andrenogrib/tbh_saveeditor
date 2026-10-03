@@ -24,13 +24,15 @@ A local web app (runs in your browser) to edit **Taskbar Hero** save files, with
   (1–100, Exp consistent with the level).
 - **Pets** (*Player* tab): lock/unlock the kill-unlock pets (the game may lock them again if the
   kill condition is not met). DLC pets are display-only: ownership belongs to Steam.
-- **Runes** (*Player* tab): raise them to the max level from the game tables, except the chest
-  family (drop chance, capacity, auto-open, open all), which the editor leaves alone.
+- **Runes** (*Player* tab): raise them to the max level from the game tables, parent node before
+  child. The chest family (drop chance, capacity, auto-open, open all) is left out by default;
+  tick "include chest runes" to raise them too (high risk: it asks for confirmation and shows how
+  much gold that would cost in the game).
 - **Progress** (*Player* tab): current stage, unlocked stage and Plague intensity, read-only —
   the game server is the authority on progress.
 
 Out of scope, always: creating/duplicating items, stages, skins, play time and statistics,
-unlocking DLC pets, raising chest runes.
+unlocking DLC pets.
 
 > **Everything you save goes to the game's server the next time the game starts** (it uploads a
 > snapshot of gold, heroes, runes, cube and every item with its enchantments). The editor keeps

@@ -253,20 +253,54 @@ class RoutesTest(SaveCase):
 
     # ---------- runas ----------
     def test_max_runes(self):
-        """P1-9: eleva ate MaxLevel tudo menos a familia bau; nunca acima do maximo."""
+        """P1-9: por padrao eleva ate MaxLevel tudo menos a familia bau; nunca acima do maximo."""
         gd = GD()
         before = {r["RuneKey"]: r["Level"] for r in self.save.player["RuneSaveData"]}
         res = self.ok("POST", "/api/max_runes", {})
+        self.assertEqual(res["chestRaised"], 0)
         for r in self.save.player["RuneSaveData"]:
             mx = gd.rune_max_level(r["RuneKey"])
             if mx is None:
                 continue
             if gd.rune_is_chest(r["RuneKey"]):
                 self.assertEqual(r["Level"], before[r["RuneKey"]])
-            else:
+            elif gd.rune_name(r["RuneKey"], "pt") not in res["blockedByTree"]:
                 self.assertEqual(r["Level"], max(before[r["RuneKey"]], mx))
         self.assertEqual(len(res["skippedChest"]), res["runes"]["chest"])
         self.save_and_check(allowed=["player.RuneSaveData"])
+
+    def test_max_runes_incluindo_bau(self):
+        """Opcao explicita do usuario: sobe tambem as de bau, com aviso e o ouro que valeriam."""
+        gd = GD()
+        before = {r["RuneKey"]: r["Level"] for r in self.save.player["RuneSaveData"]}
+        chest_below = self.ok("GET", "/api/player")["runes"]["chest"]
+        res = self.ok("POST", "/api/max_runes", {"includeChest": True})
+        self.assertEqual(res["skippedChest"], [])
+        self.assertEqual(res["chestRaised"], chest_below)
+        for r in self.save.player["RuneSaveData"]:
+            mx = gd.rune_max_level(r["RuneKey"])
+            if mx is not None:
+                self.assertEqual(r["Level"], max(before[r["RuneKey"]], mx))
+        if chest_below:
+            self.assertGreater(res["goldValue"], 0)
+            self.assertIn("baú", res.get("warning", ""))
+        self.save_and_check(allowed=["player.RuneSaveData"])
+
+    def test_max_runes_respeita_a_arvore(self):
+        """Filho comum de um pai de bau nao sobe sem o pai (nunca runa comprada sem o pai)."""
+        gd = GD()
+        runes = {str(r["RuneKey"]): r for r in self.save.player["RuneSaveData"]}
+        child = next((k for k, p in gd.rune_parent.items()
+                      if p in runes and k in runes and gd.rune_is_chest(p) and not gd.rune_is_chest(k)), None)
+        if child is None:
+            self.skipTest("sem runa comum abaixo de runa de bau no save")
+        parent = gd.rune_parent[child]
+        runes[parent]["Level"], runes[child]["Level"] = 0, 0
+        res = self.ok("POST", "/api/max_runes", {})
+        self.assertEqual((runes[parent]["Level"], runes[child]["Level"]), (0, 0))
+        self.assertIn(gd.rune_name(child, "pt"), res["blockedByTree"])
+        self.ok("POST", "/api/max_runes", {"includeChest": True})
+        self.assertEqual(runes[child]["Level"], gd.rune_max_level(child))
 
     # ---------- cubo ----------
     def test_set_cube(self):

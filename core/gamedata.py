@@ -100,8 +100,13 @@ class GameData:
                                   for r in _read_csv(os.path.join(t, "AttributeInfoData.csv"))
                                   if r["ATTRIBUTETYPE"] == "ACTIVESKILL"}
         self.rune_stats = {}  # LevelDataKey -> STATTYPEs dos niveis da runa
+        self.rune_costs = {}  # LevelDataKey -> {nivel: ouro para chegar nele}
         for r in _read_csv(os.path.join(t, "RuneLevelInfoData.csv")):
             self.rune_stats.setdefault(r["LevelKey"], set()).add(r["STATTYPE"])
+            if r["CostItemKey"] == "100001":
+                self.rune_costs.setdefault(r["LevelKey"], {})[int(r["Level"])] = int(r["CostValue"] or 0)
+        # arvore: filho -> pai (NextRuneKey lista os filhos; cada runa tem no maximo um pai)
+        self.rune_parent = {c: k for k, r in self.rune_info.items() for c in (r.get("NextRuneKey") or "").split()}
         self.stage_info = {r["StageKey"]: r for r in _read_csv(os.path.join(t, "StageInfoData.csv"))}
         self.plague_max = max(int(r["PlagueIntensity"])
                               for r in _read_csv(os.path.join(t, "PlagueIntensityInfoData.csv")))
@@ -183,6 +188,28 @@ class GameData:
         r = self.rune_info.get(str(rune_key)) or {}
         stats = self.rune_stats.get(r.get("LevelDataKey") or str(rune_key), ())
         return any("Chest" in s for s in stats)
+
+    def rune_parent_req(self, rune_key):
+        """Nivel que o pai precisa ter para a runa poder ser comprada: max(1, PrevNodeRequiredLevel)."""
+        v = (self.rune_info.get(str(rune_key)) or {}).get("PrevNodeRequiredLevel") or 0
+        return max(1, int(v))
+
+    def rune_gold_cost(self, rune_key, from_level, to_level):
+        """Ouro que o jogo cobra para subir a runa de from_level ate to_level."""
+        r = self.rune_info.get(str(rune_key)) or {}
+        costs = self.rune_costs.get(r.get("LevelDataKey") or str(rune_key), {})
+        return sum(costs.get(n, 0) for n in range(int(from_level) + 1, int(to_level) + 1))
+
+    def rune_order(self):
+        """Chaves da tabela com o pai antes dos filhos (para subir a arvore de cima para baixo)."""
+        depth = {}
+
+        def d(k):
+            if k not in depth:
+                p = self.rune_parent.get(k)
+                depth[k] = 0 if p is None or p not in self.rune_info else d(p) + 1
+            return depth[k]
+        return sorted(self.rune_info, key=lambda k: (d(k), int(k)))
 
     def rune_keys_with_stat(self, stattype):
         return {k for k, r in self.rune_info.items()

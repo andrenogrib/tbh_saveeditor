@@ -461,24 +461,37 @@ function renderPlayer(d) {
   const r = d.runes;
   rb.append(el("div", null,
     `<b>${r.maxed}</b> de <b>${r.total}</b> runas no nível máximo` +
-    (r.below ? ` · <b>${r.below}</b> podem subir` : "") +
-    (r.chest ? ` · <small>${r.chest} de baú ficam de fora</small>` : "") +
+    (r.below ? ` · <b>${r.below}</b> comuns podem subir` : "") +
+    (r.chest ? ` · <b>${r.chest}</b> de baú abaixo do máximo` : "") +
     (r.unknown ? ` · <small>${r.unknown} sem dados na tabela</small>` : "")));
+  const chk = el("label", "ab-check");
+  const inc = el("input"); inc.type = "checkbox"; inc.disabled = !r.chest;
+  chk.append(inc, document.createTextNode(" incluir as runas de baú (risco alto)"));
   const btn = el("button", "primary", "Maximizar runas");
   btn.onclick = async () => {
+    const includeChest = inc.checked;
+    if (includeChest && !confirm(
+      `Subir também as ${r.chest} runa(s) de baú?\n\n` +
+      "• Elas aumentam chance de drop, capacidade e auto-abertura de baús — baús que o servidor do jogo " +
+      "processa e cujos itens podem ir para o Steam Market.\n" +
+      `• No jogo, completar essas runas custa ${fmt(r.chestGoldCost)} de ouro; o editor não desconta ouro.\n` +
+      "• O snapshot enviado ao servidor na próxima abertura mostra as runas no máximo, e o jogo tem " +
+      "relatório próprio de taxa/volume de baús que não depende do tempo de jogo.\n\n" +
+      "Risco para a conta: alto. Continuar?")) return;
     try {
-      const res = await api("POST", "/api/max_runes", {});
-      const skipped = res.skippedChest.length ? ` · ${res.skippedChest.length} de baú ficaram de fora` : "";
-      if (res.changed) toast(`${res.changed} runa(s) elevadas ao máximo${skipped} — lembre de Salvar`, "ok");
-      else toast(`Nenhuma runa mudou: ${res.runes.maxed} já no máximo${skipped}` +
+      const res = await api("POST", "/api/max_runes", { includeChest });
+      const extra = (res.skippedChest.length ? ` · ${res.skippedChest.length} de baú ficaram de fora` : "") +
+        (res.blockedByTree.length ? ` · ${res.blockedByTree.length} esperam o nó pai` : "");
+      if (res.changed) done(`${res.changed} runa(s) elevadas ao máximo${extra} — lembre de Salvar`, res);
+      else toast(`Nenhuma runa mudou: ${res.runes.maxed} já no máximo${extra}` +
         (res.runes.unknown ? `, ${res.runes.unknown} sem dados` : ""), "");
       refreshPlayer();
     } catch (e) { toast("Erro: " + e.message, "err"); }
   };
-  const act = el("div", "actions"); act.append(btn); rb.append(act);
-  rb.append(el("div", "hint", "Sobem até o MaxLevel da tabela do jogo. As runas de baú (chance de drop, " +
-    "capacidade, auto-abertura, abrir todos) ficam de fora: mexem em baús que o servidor processa e " +
-    "cujos itens vão para o Steam Market."));
+  const act = el("div", "actions"); act.append(btn, chk); rb.append(act);
+  rb.append(el("div", "hint", "Sobem até o MaxLevel da tabela do jogo, respeitando a árvore (o nó pai antes " +
+    "do filho). Por padrão as runas de baú (chance de drop, capacidade, auto-abertura, abrir todos) ficam " +
+    "de fora; marque a opção para incluí-las."));
 }
 
 // ---------- progresso (somente leitura; o servidor do jogo manda nos estágios) ----------

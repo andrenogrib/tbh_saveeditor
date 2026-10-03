@@ -37,6 +37,9 @@ Ficou de fora, de propósito:
 - **Teste no jogo (passo 8):** o usuário faz, com o jogo fechado; roteiro na resposta da migração e
   em §6, passo 8.
 
+Depois da migração, a pedido do usuário: "Maximizar runas" ganhou a opção explícita de incluir as
+runas de baú (§7, linha "Runas"), e o maximizar passou a respeitar a árvore de runas nos dois modos.
+
 ---
 
 ## 1. Resumo
@@ -143,7 +146,7 @@ economia do Market.
 |---|---|---|---|
 | Encantamento dentro das tabelas da 1.2.8 | **baixo–médio** | indistinguível de legítimo; aparece no DataSnap; item encantado não pode ir ao Market | manter, com dados 1.2.8 e validação completa |
 | Skills (loadout) | **baixo** | escolha reversível | manter, validando skill aprendida/slot 3 (runa 27) |
-| Runas | **alto** para as que faltam | no save atual as 197 runas antigas já estão no máximo; as 20 que faltam (todas novas da 1.2.x) só aumentam chance de drop, capacidade e auto-abertura de baús — baús que o servidor processa e cujos itens são negociáveis no Steam Market; completá-las no jogo custa 28,7 bilhões de ouro; a contagem de caixas tem relatório próprio (`Box_*_Rate/Volume`) que não depende do tempo de jogo | fora do "maximizar": runas de drop/baú não são elevadas pelo editor; nunca acima de `MaxLevel` |
+| Runas | **alto** para as que faltam | no save atual as 197 runas antigas já estão no máximo; as 20 que faltam (todas novas da 1.2.x) só aumentam chance de drop, capacidade e auto-abertura de baús — baús que o servidor processa e cujos itens são negociáveis no Steam Market; completá-las no jogo custa 28,7 bilhões de ouro; a contagem de caixas tem relatório próprio (`Box_*_Rate/Volume`) que não depende do tempo de jogo | por padrão fora do "maximizar"; incluí-las exige opção explícita com confirmação (decisão do usuário, §7); nunca acima de `MaxLevel` |
 | Ouro | **médio** | aparece no DataSnap e diverge de `total_gold_earned` da Steam; `Gold_Massive` só para contas com pouco tempo de jogo (não a sua) | avisar acima de 100 M |
 | Herói (nível/EXP/pontos) | **médio** | aparece no DataSnap e em `max_hero_level` da Steam (a cada 3 min); `Level_50/80` só para contas com pouco tempo de jogo; nível > 101 fica e trava level-ups | nível 1..101; pontos dentro do orçamento do jogo |
 | Cubo | **médio** (alto se usado para passar do nível 10) | nível vai no DataSnap, em `cube_level` da Steam e nas requisições de consumo (não provado que o servidor use); nível 10 libera o Trade Ship/Steam Market; o jogo corrige nível > 100 no load, mas **não** o Exp | limitar a 1..100, gravar `Exp` coerente (999.999.999 no 100) e avisar; não usar para liberar o Market |
@@ -235,7 +238,8 @@ Fechadas em duas rodadas de perguntas antes da `/portar-versao 1.2.8`. Valem par
 
 **Escopo:** completo com travas — o editor mantém todas as funções de hoje, dentro dos limites
 reais do jogo e com avisos. Fora do editor, sempre: criar/duplicar itens, estágios, skins,
-`playTime`, `aggregateSaveDatas`/estatísticas, desbloquear pet de DLC, elevar runas de baú.
+`playTime`, `aggregateSaveDatas`/estatísticas, desbloquear pet de DLC. Runas de baú: só com opção
+explícita do usuário (revisto em 2026-10-03, linha "Runas" abaixo).
 
 | Área | Decisão |
 |---|---|
@@ -252,7 +256,7 @@ reais do jogo e com avisos. Fora do editor, sempre: criar/duplicar itens, estág
 | Cubo | nível 1..100; `Exp` coerente (< `ExpForLevelUp` do nível; 999.999.999 no 100) |
 | Pets 1001–1005 (abate) | travar/destravar com aviso (o jogo pode travar de novo sem os 5000 abates; trava sem efeito se a condição está cumprida) |
 | Pets 6001–6003 (DLC) | só exibição ("DLC — gerenciado pela Steam") |
-| Runas | "maximizar" eleva até `MaxLevel` tudo exceto a família baú (`STATTYPE` com `Chest`: chance de drop, capacidade, auto-abertura, abrir todos); mensagem honesta quando nada muda |
+| Runas | "maximizar" eleva até `MaxLevel` tudo exceto a família baú (`STATTYPE` com `Chest`: chance de drop, capacidade, auto-abertura, abrir todos); mensagem honesta quando nada muda. **Revisto em 2026-10-03 a pedido do usuário:** opção explícita "incluir as runas de baú", com confirmação que mostra o risco e o ouro que valeriam no jogo (28.665.000.000 no save atual). Nos dois modos a árvore é respeitada: filho só sobe com o pai no nível que ele exige |
 | Progresso | painel só de leitura (estágio atual, desbloqueado até, intensidade da Peste), nomes da tabela |
 | Salvar | recusado com o jogo aberto ou se o arquivo mudou desde o load; gravação atômica; aviso/bloqueio de item com transação pendente |
 | Servidor local | só aceita requisições da própria página (origem + token) |

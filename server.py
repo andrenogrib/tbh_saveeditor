@@ -247,7 +247,7 @@ def hero_brief(h):
 
 def runes_summary():
     """Contagem das runas do save: no maximo, abaixo (editaveis / familia bau) e sem dados."""
-    total = maxed = unknown = below = chest = 0
+    total = maxed = unknown = below = chest = chest_cost = 0
     for r in State.save.player.get("RuneSaveData", []):
         total += 1
         mx = GD.rune_max_level(r.get("RuneKey"))
@@ -257,9 +257,38 @@ def runes_summary():
             maxed += 1
         elif GD.rune_is_chest(r.get("RuneKey")):
             chest += 1
+            chest_cost += GD.rune_gold_cost(r.get("RuneKey"), r.get("Level", 0), mx)
         else:
             below += 1
-    return {"total": total, "maxed": maxed, "unknown": unknown, "below": below, "chest": chest}
+    return {"total": total, "maxed": maxed, "unknown": unknown, "below": below, "chest": chest,
+            "chestGoldCost": chest_cost}
+
+
+def max_runes(include_chest):
+    """Sobe as runas do save ate MaxLevel, pai antes dos filhos, so onde o pai ja tem o nivel
+    que o filho exige (nunca cria runa comprada sem o pai). A familia bau so com include_chest.
+    Nunca abaixa nada nem cria entrada nova."""
+    by_key = {str(r.get("RuneKey")): r for r in State.save.player.get("RuneSaveData", [])}
+    res = {"changed": 0, "chestRaised": 0, "goldValue": 0, "skippedChest": [], "blockedByTree": []}
+    for key in GD.rune_order():
+        r = by_key.get(key)
+        mx = GD.rune_max_level(key)
+        if r is None or mx is None or int(r.get("Level", 0)) >= mx:
+            continue
+        name = GD.rune_name(key, State.locale)
+        chest = GD.rune_is_chest(key)
+        if chest and not include_chest:  # P1-9: familia bau so com opcao explicita
+            res["skippedChest"].append(name)
+            continue
+        pk = GD.rune_parent.get(key)
+        if pk and int((by_key.get(pk) or {}).get("Level", 0)) < GD.rune_parent_req(key):
+            res["blockedByTree"].append(name)  # pai abaixo do exigido (ou ausente do save)
+            continue
+        res["goldValue"] += GD.rune_gold_cost(key, r.get("Level", 0), mx)
+        r["Level"] = mx
+        res["changed"] += 1
+        res["chestRaised"] += 1 if chest else 0
+    return res
 
 
 def progress_payload():
@@ -611,18 +640,13 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if p == "/api/max_runes":
             if not State.save:
                 return self._send(400, {"error": "save nao carregado"})
-            changed, chest = 0, []
-            for r in State.save.player.get("RuneSaveData", []):
-                mx = GD.rune_max_level(r.get("RuneKey"))
-                if mx is None or int(r.get("Level", 0)) >= mx:
-                    continue
-                if GD.rune_is_chest(r.get("RuneKey")):  # P1-9: familia bau fica de fora
-                    chest.append(GD.rune_name(r.get("RuneKey"), State.locale))
-                    continue
-                r["Level"] = mx
-                changed += 1
-            return self._send(200, {"ok": True, "changed": changed, "skippedChest": chest,
-                                    "runes": runes_summary()})
+            res = max_runes(bool(body.get("includeChest")))
+            res.update({"ok": True, "runes": runes_summary()})
+            if res["chestRaised"]:
+                res["warning"] = ("%d runa(s) de baú elevadas: valem %s de ouro no jogo, que o editor não "
+                                  "desconta; o snapshot enviado ao servidor mostra as runas no máximo"
+                                  % (res["chestRaised"], fmt_num(res["goldValue"])))
+            return self._send(200, res)
         if p == "/api/set_cube":
             if not State.save:
                 return self._send(400, {"error": "save nao carregado"})
