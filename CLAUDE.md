@@ -7,10 +7,11 @@ http://127.0.0.1:8765. Python stdlib no runtime; UI em `web/` (HTML/JS puro). Us
 
 ## Estado das versões
 
-- `data/` foi extraído da **1.00.17**; o jogo instalado e o save estão na **1.2.8**.
+- `data/` é da **1.2.8** (`data/VERSION`; promovido de `research/1.2.8/` em 2026-10-03), a
+  mesma versão do jogo instalado e do save.
 - Senha ES3 e chave HMAC da 1.00.17 **ainda valem** na 1.2.8 (conferido em 2026-09-29).
-- A migração para 1.2.8 está documentada em [docs/UPDATE_1.2.8.md](docs/UPDATE_1.2.8.md); os
-  dados extraídos da 1.2.8 ficam em `research/1.2.8/` até serem promovidos a `data/`.
+- Migração 1.2.8: [docs/UPDATE_1.2.8.md](docs/UPDATE_1.2.8.md) (§0 = o que foi feito e o que
+  falta). Falta só o teste no jogo, feito pelo usuário.
 
 ## O save do usuário é produção
 
@@ -22,9 +23,12 @@ http://127.0.0.1:8765. Python stdlib no runtime; UI em `web/` (HTML/JS puro). Us
   `tbh_paths.game_running() is False` (None = trate como aberto); rode `save_lab.py snapshot` e
   informe a pasta criada (é o ponto de volta); mostre `save_lab.py info` do arquivo (HMAC OK);
   espere o "sim"; copie; rode `info` no vivo.
-- O editor (`server.py`) abre por padrão o save **vivo** e o Salvar grava nele; ele não usa
-  `tools/tbh_paths.py` nem `TBH_SAVE_DIR`. Para testar, carregue uma cópia pelo campo de caminho
-  da UI ou `POST /api/load {"path": "<cópia>"}` e confira `GET /api/state` antes de salvar.
+- O editor (`server.py`) abre por padrão o save **vivo** (`%USERPROFILE%`, não `TBH_SAVE_DIR`)
+  e o Salvar grava nele. O Salvar recusa (409) com o jogo aberto quando o caminho é uma pasta
+  protegida de `tools/tbh_paths.py`, e quando o arquivo mudou desde o load. Para testar,
+  carregue uma cópia pelo campo de caminho da UI ou `POST /api/load {"path": "<cópia>"}` e
+  confira `GET /api/state` antes de salvar. `/api/*` exige o cabeçalho `X-TBH-Token` (vem na
+  página, `<meta name="tbh-token">`) e Host local.
 - A instalação do jogo (`steamapps/common/TaskbarHero`) é somente leitura.
 - `.claude/hooks/tbh_guard.py` pede confirmação quando o **texto** de uma tool call cita essas
   pastas com cara de escrita. Ele não vê HTTP para o editor nem caminhos montados em runtime; as
@@ -37,8 +41,9 @@ http://127.0.0.1:8765. Python stdlib no runtime; UI em `web/` (HTML/JS puro). Us
    gravadas; `core/es3.py` recalcula no `save()`. Nunca troque `ownerSteamId`.
 2. Edite o dict carregado **in-place** e preserve todo campo desconhecido — cada versão do jogo
    acrescenta campos (a 1.2.x trouxe `equippedItemBlocked`, `IsBlocked`, `Quantity`,
-   `EquippedSkinKey`...). Nunca reconstrua objetos do save a partir de um esquema (hoje
-   `GameData.build_enchant()` recria o `EnchantData` e perde `EnchantVersion`; ver o plano).
+   `EquippedSkinKey`, `EnchantVersion`...). Nunca reconstrua objetos do save a partir de um
+   esquema: encantamento se grava com `GameData.write_enchant()` (campo a campo; slot alterado
+   recebe `EnchantVersion` = versão do save, slot igual não é tocado).
 3. Encantamento: o jogo aplica todo slot com `Tier > 0` usando `StatType`/`ModType`/`Value`
    **gravados** — eles têm de bater com `StatModInfoData` (faixa e passo) **da versão instalada**.
    `EnchantCount` (não nulo, 3 posições) = slots preenchidos por tipo, nunca menos que os slots
@@ -46,10 +51,10 @@ http://127.0.0.1:8765. Python stdlib no runtime; UI em `web/` (HTML/JS puro). Us
    por aplicação real (alimenta conquista Steam — não inflar); `len(EnchantData)` pela grade
    (0/2/4/6). Limpar um slot = zerá-lo sem deslocar os outros e decrementar `EnchantCount`, como
    a Extração do jogo.
-4. Só IDs que existem nas tabelas do jogo. Regra ainda NÃO aplicada pelo editor: hoje
-   `/api/set_enchant` aceita item fora de `GearInfoData` (fallback permissivo em
-   `gamedata.max_slots`). Até portar a versão, rode `save_lab.py coverage` e não edite o que ele
-   lista.
+4. Só IDs que existem nas tabelas do jogo: `GameData.enchantable()` recusa item fora de
+   `GearInfoData`, de grade desconhecida ou da Steam (`ItemKey` > 9.999.999); item citado numa
+   transação pendente (`pending*`, `AlchemyPendingIdList`) também não é editado. Numa versão
+   nova do jogo, rode `save_lab.py coverage` antes de editar.
 5. Prova de escrita: skill `save-lab`, passo 4.
 
 ## Comandos
@@ -61,8 +66,9 @@ http://127.0.0.1:8765. Python stdlib no runtime; UI em `web/` (HTML/JS puro). Us
 - Código do JOGO (dump IL2CPP) é outro grafo, fora do repo:
   `graphify query "<pergunta>" --graph $HOME/tbh_re/<versão>/game_src/graphify-out/graph.json`
   (também `explain`/`path`/`affected`). O grafo padrão (`graphify-out/`) só tem o editor.
-- Não há suíte de testes ainda; checagem mínima: `python -m compileall -q server.py core tools`
-  e `save_lab.py roundtrip` num snapshot.
+- Testes: `python -m unittest discover -s tests -v` (rotas reais sobre uma cópia do snapshot
+  mais novo de `~/tbh_re/saves`, ou `TBH_TEST_SAVE`; sem snapshot, os de save são pulados) e
+  `python -m compileall -q server.py core tools tests`.
 
 ## Convenções
 

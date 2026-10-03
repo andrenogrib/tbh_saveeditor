@@ -16,6 +16,29 @@ Evidência detalhada (cada afirmação daqui tem origem lá):
 
 ---
 
+## 0. Estado da migração (2026-10-03)
+
+`/portar-versao 1.2.8` executada na branch `port-1.2.8` (commits locais, sem push). Feito:
+
+| Passo | Resultado |
+|---|---|
+| 2. Rede de segurança | `tests/` (stdlib): rotas reais do `server.py` sobre uma cópia do snapshot mais novo, HMAC, "só o editado mudou", nenhum campo removido; dados; proteções do Salvar. 34 testes. Os 6 `expectedFailure` do plano (P1-3, P1-4, P1-5, P1-6, P1-7, P2-1) viraram testes normais. |
+| 3. Dados | `research/1.2.8` promovido a `data/` + `data/VERSION`; `save_lab coverage --data data` não acha ID desconhecido. |
+| 4. Código | P1-1, P1-3, P1-4, P1-5, P1-6, P1-7, P1-8, P1-9, P2-1, P2-2, P2-3, P2-4, P2-5, P2-7, P2-9, P2-11, P3-1, P3-2, P3-3, P3-6, P3-8, P3-9 e as decisões da §7 (banner do servidor, painel de progresso só leitura, avisos). |
+| 5. Verificação | `compileall`, testes em dois snapshots (01/10 com o jogo fechado; 03/10 regravado pelo jogo), `roundtrip` (conteúdo idêntico), editor de pé via HTTP numa cópia: todas as rotas, Salvar, HMAC OK, `.bak` igual ao snapshot, 409 com o arquivo alterado. No save regravado pelo jogo, o auto-build não muda nenhum slot (antes reescrevia ~95%). |
+| 6. Revisão | `/code-review` no diff da branch: 2 achados, corrigidos (o Salvar recalculava `EnchantCount` de item somente leitura/pendente; o carimbo do load não era dos mesmos bytes decriptados). |
+
+Ficou de fora, de propósito:
+
+- **P3-4 (parte):** o Priest é `IsMeleeHero=True` na 1.2.8, mas o perfil do auto-build continua de
+  suporte. É decisão de build, não de compatibilidade. Os números do docstring foram atualizados.
+- **P3-7:** encantar pelo editor não soma as estatísticas (`aggregateSaveDatas` 10–12). Só registrado;
+  editar agregados não vale o risco.
+- **Teste no jogo (passo 8):** o usuário faz, com o jogo fechado; roteiro na resposta da migração e
+  em §6, passo 8.
+
+---
+
 ## 1. Resumo
 
 1. **O editor ainda grava saves que o jogo aceita.** Senha ES3 e chave HMAC não mudaram (validam os
