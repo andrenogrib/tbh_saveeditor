@@ -63,7 +63,8 @@
     "60": "ElementalBlockChance",
     "61": "ElementalDodgeChance",
     "62": "MaxElementalBlockChance",
-    "63": "MaxElementalDodgeChance"
+    "63": "MaxElementalDodgeChance",
+    "64": "MaxAllElementalResistance"
   },
   "MODTYPE": {
     "0": "FLAT",
@@ -79,7 +80,8 @@
     "5": "INSCRIPTION",
     "6": "OFFERING",
     "7": "EXTRACTION",
-    "8": "NONE"
+    "8": "NONE",
+    "9": "CORROSION"
   },
   "EMaterialType": {
     "0": "DECORATION",
@@ -88,7 +90,8 @@
     "3": "INSCRIPTION",
     "4": "OFFERING",
     "5": "CRAFTING",
-    "6": "NONE"
+    "6": "NONE",
+    "7": "ETC"
   },
   "EGradeType": {
     "0": "COMMON",
@@ -102,5 +105,111 @@
     "8": "DIVINE",
     "9": "COSMIC",
     "10": "NONE"
+  },
+  "EItemGetSourceType": {
+    "0": "None",
+    "1": "QA",
+    "2": "Synthesis",
+    "3": "Offering",
+    "4": "Crafting",
+    "5": "OpenBox",
+    "6": "MonsterDieReward",
+    "7": "BackendPost",
+    "8": "UpdateInventoryNewBox",
+    "9": "BoxInventoryInit",
+    "10": "UploadToSteam",
+    "11": "NewMail",
+    "12": "DownloadToSteam",
+    "13": "MailExchangeBox",
+    "14": "FirstClearRewardBox",
+    "15": "ClaimMail",
+    "16": "StackMigration"
+  },
+  "EGearGroup": {
+    "0": "NONE",
+    "1": "WEAPON",
+    "2": "ARMOR",
+    "3": "ACCESSORY",
+    "4": "COMMON"
+  },
+  "EAggregateType": {
+    "0": "MonsterKill",
+    "1": "HeroDeath",
+    "2": "GoldEarn",
+    "3": "BoxObtain",
+    "4": "ItemObtain",
+    "5": "Synthesis",
+    "6": "Alchemy",
+    "7": "Crafting",
+    "8": "Offering",
+    "9": "Extraction",
+    "10": "Decoration",
+    "11": "Engraving",
+    "12": "Inscription",
+    "13": "StageClear",
+    "14": "StageFail",
+    "15": "PlayTime",
+    "16": "BoxOpen",
+    "17": "ActBossKill",
+    "18": "TradingStashLoad",
+    "19": "SteamOriginItemBuy"
+  },
+  "EAggregateContent": {
+    "0": "Total",
+    "1": "Normal",
+    "2": "Plague",
+    "3": "End"
+  },
+  "EEquipClassType": {
+    "0": "All",
+    "1": "Knight",
+    "2": "Ranger",
+    "3": "Sorcerer",
+    "4": "Priest",
+    "5": "Hunter",
+    "6": "Slayer"
+  },
+  "EHeroType": {
+    "0": "Knight",
+    "1": "Archer",
+    "2": "Wizard",
+    "3": "Priest",
+    "4": "Hunter",
+    "5": "Barbarian"
+  },
+  "EItemType": {
+    "0": "STAGEBOX",
+    "1": "MATERIAL",
+    "2": "GEAR",
+    "3": "NONE"
+  },
+  "EGearType": {
+    "0": "NONE",
+    "1": "SWORD",
+    "2": "BOW",
+    "3": "STAFF",
+    "4": "SCEPTER",
+    "5": "CROSSBOW",
+    "6": "AXE",
+    "7": "SHIELD",
+    "8": "ARROW",
+    "9": "ORB",
+    "10": "TOME",
+    "11": "BOLT",
+    "12": "HATCHET",
+    "13": "HELMET",
+    "14": "ARMOR",
+    "15": "GLOVES",
+    "16": "BOOTS",
+    "17": "AMULET",
+    "18": "EARING",
+    "19": "RING",
+    "20": "BRACER"
+  },
+  "EStageType": {
+    "0": "NORMAL",
+    "1": "ACTBOSS",
+    "2": "PLAGUE",
+    "3": "CONTAMINACTBOSS"
   }
 }
