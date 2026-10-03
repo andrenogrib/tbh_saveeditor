@@ -40,9 +40,12 @@ def default_save_path():
 # ---------------- serializacao para a UI ----------------
 def item_payload(it):
     ikey = it["ItemKey"]
+    eds = it.get("EnchantData") or []
     enchants = []
-    for i, ed in enumerate(it.get("EnchantData", [])[:6]):
-        filled = ed.get("MaterialKey", 0) != 0
+    # mostra tambem os slots da grade que o EnchantData ainda nao tem (o jogo completa)
+    for i in range(min(len(SLOT_LABELS), max(len(eds), GD.enchant_len(ikey)))):
+        ed = eds[i] if i < len(eds) else {}
+        filled = gamedata.is_filled(ed)
         e = {"slot": i, "type": GD.slot_material_type(i), "label": SLOT_LABELS[i],
              "filled": filled, "allowed": GD.slot_allowed(ikey, i)}
         if filled:
@@ -68,6 +71,7 @@ def item_payload(it):
         "maxSlots": GD.max_slots(ikey),
         "enchantCount": it.get("EnchantCount"),
         "enchants": enchants,
+        "readOnly": GD.enchantable(ikey),
     }
 
 
@@ -232,29 +236,35 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 return self._send(400, {"error": "falha ao carregar: %s" % e})
             return self._send(200, heroes_payload())
         if p == "/api/set_enchant":
-            it = find_item(body["uniqueId"])
+            if not State.save:
+                return self._send(400, {"error": "save nao carregado"})
+            it = find_item(body.get("uniqueId"))
             if not it:
                 return self._send(404, {"error": "item nao encontrado"})
-            slot = int(body["slot"])
-            while len(it.get("EnchantData", [])) <= slot:
-                it.setdefault("EnchantData", []).append(GD.empty_enchant())
-            if body.get("clear"):
-                it["EnchantData"][slot] = GD.empty_enchant()
-                GD.recount_enchants(it)  # mantem EnchantCount coerente
-                return self._send(200, item_payload(it))
-            if not GD.slot_allowed(it["ItemKey"], slot):
-                return self._send(400, {"error": "a grade %s do item não permite esse slot" % GD.grade_name(it["ItemKey"])})
             try:
-                ed = GD.build_enchant(slot, int(body["materialKey"]), int(body["statModKey"]),
-                                      int(body["tier"]), int(body["value"]))
-            except Exception as e:
+                slot = int(body.get("slot"))
+            except (TypeError, ValueError):
+                return self._send(400, {"error": "slot inválido"})
+            if not 0 <= slot < len(SLOT_LABELS):
+                return self._send(400, {"error": "slot inválido"})
+            why = GD.enchantable(it["ItemKey"])
+            if why:
+                return self._send(400, {"error": why})
+            # valida tudo antes de mexer no item (P2-1)
+            if body.get("clear"):
+                if GD.clear_enchant(it, slot):  # Extracao: nao conta aplicacao
+                    GD.recount_enchants(it)
+                return self._send(200, item_payload(it))
+            try:
+                fields = GD.enchant_fields(slot, it["ItemKey"], int(body["materialKey"]),
+                                           int(body["statModKey"]), int(body["tier"]), int(body["value"]))
+            except KeyError as e:
+                return self._send(400, {"error": "campo %s ausente" % e})
+            except (TypeError, ValueError) as e:
                 return self._send(400, {"error": str(e)})
-            errs = GD.validate_enchant(slot, it["ItemKey"], ed)
-            if errs:
-                return self._send(400, {"error": "; ".join(errs)})
-            it["EnchantData"][slot] = ed
-            GD.bump_applied(it, slot)     # +1 no AppliedTotalCount do tipo
-            GD.recount_enchants(it)       # EnchantCount = nº ativos por tipo (ATIVA o efeito no jogo)
+            if GD.write_enchant(it, slot, fields, State.save.account.get("version")):
+                GD.bump_applied(it, slot)     # +1 no AppliedTotalCount do tipo (so mudanca real)
+                GD.recount_enchants(it)
             return self._send(200, item_payload(it))
         if p == "/api/auto_build":
             if not State.save:
@@ -281,12 +291,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
                                                overwrite=overwrite, current=it.get("EnchantData", []))
                     if not plan:
                         continue
-                    while len(it.get("EnchantData", [])) < 6:
-                        it.setdefault("EnchantData", []).append(GD.empty_enchant())
                     touched = False
-                    for slot, ed in plan:
-                        if it["EnchantData"][slot] != ed:
-                            it["EnchantData"][slot] = ed
+                    for slot, fields in plan:
+                        # compara so os 7 campos; slot igual nao e regravado nem contado (P1-3)
+                        if GD.write_enchant(it, slot, fields, State.save.account.get("version")):
                             GD.bump_applied(it, slot)
                             n_slots += 1
                             touched = True

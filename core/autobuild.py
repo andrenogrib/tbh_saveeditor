@@ -31,6 +31,7 @@ O modo 'survival' NAO sacrifica o dano da arma/acessorio: mantem a ofensiva e
 adiciona Life Leech nas inscricoes + Max HP/Damage Reduction/resistencia na
 armadura. (Erro da versao anterior: trocava dano por resistencia fraca -> pior.)
 """
+from .gamedata import is_filled
 
 # ---- atalhos (statType, modType) ----
 AD_ADD   = ("AttackDamage", "ADDITIVE")
@@ -246,12 +247,14 @@ _SLOTS = {"DECORATION": (0, 1), "ENGRAVING": (2, 3), "INSCRIPTION": (4, 5)}
 
 
 def plan_item(gd, item_key, hero_key, mode="balanced", overwrite=True, current=None):
-    """Devolve lista de (slot_index, enchant_dict) a aplicar num item.
+    """Devolve lista de (slot_index, campos do encantamento) a aplicar num item.
     - respeita quantos slots de cada tipo a grade permite;
     - overwrite=False mantem slots ja preenchidos, so completa vazios."""
     role = ROLE.get(int(hero_key), "melee")
     gg = gd.gear_group(item_key)
     if gg is None:
+        return []
+    if gd.enchantable(item_key):
         return []
     max_slots = gd.max_slots(item_key)
     current = current or []
@@ -266,12 +269,13 @@ def plan_item(gd, item_key, hero_key, mode="balanced", overwrite=True, current=N
             slot = a + j
             if not overwrite:
                 cur = current[slot] if slot < len(current) else None
-                if cur and cur.get("MaterialKey", 0) != 0:
+                if is_filled(cur):
                     continue  # ja preenchido; nao mexe
             if j >= len(picks):
                 continue
             _key, opt = picks[j]
-            ed = gd.build_enchant(slot, opt["materialKey"], opt["statModKey"],
-                                  opt["tier"], opt["value"])
-            out.append((slot, ed))
+            # so os 7 campos: quem grava (gd.write_enchant) preserva o resto do slot
+            fields = gd.enchant_fields(slot, item_key, opt["materialKey"], opt["statModKey"],
+                                       opt["tier"], opt["value"])
+            out.append((slot, fields))
     return out

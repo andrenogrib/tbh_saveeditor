@@ -33,6 +33,20 @@ COUNT_FIELD = {
 }
 # tipo de material -> indice em EnchantCount[3]
 COUNT_INDEX = {"DECORATION": 0, "ENGRAVING": 1, "INSCRIPTION": 2}
+TYPES = ("DECORATION", "ENGRAVING", "INSCRIPTION")
+# os 7 campos de um encantamento; o resto do dict (ex. EnchantVersion) e preservado
+ENCHANT_FIELDS = ("StatModKey", "Tier", "Value", "RecipeType", "ModType", "MaterialKey", "StatType")
+# ItemKey acima de 9.999.999 e id de item da Steam: o editor so le (P3-8)
+STEAM_ITEM_KEY_MIN = 10000000
+
+
+def empty_fields():
+    return dict.fromkeys(ENCHANT_FIELDS, 0)
+
+
+def is_filled(ed):
+    """Slot ocupado: o jogo aplica o efeito de todo slot com Tier > 0."""
+    return bool(ed) and (ed.get("MaterialKey", 0) != 0 or ed.get("Tier", 0) > 0)
 
 
 class GameData:
@@ -74,6 +88,10 @@ class GameData:
         self.hero_info = {r["HeroKey"]: r for r in _read_csv(os.path.join(t, "HeroInfoData.csv"))}
         self.rune_info = {r["RuneKey"]: r for r in _read_csv(os.path.join(t, "RuneInfoData.csv"))}
         self.currency_info = {r["CurrencyKey"]: r for r in _read_csv(os.path.join(t, "CurrencyInfoData.csv"))}
+        self.item_info = {r["ItemKey"]: r for r in _read_csv(os.path.join(t, "ItemInfoData.csv"))}
+        # versao do jogo de onde data/ saiu (data/VERSION: "<versao> build=...")
+        vp = os.path.join(data_dir, "VERSION")
+        self.version = open(vp, encoding="utf-8").read().split()[0] if os.path.exists(vp) else None
 
     # ---- herois ----
     def hero_name(self, herokey, locale="en"):
@@ -120,27 +138,52 @@ class GameData:
         return int(s[2]) if len(s) == 6 and s.isdigit() and int(s) >= 300000 else None
 
     def grade_name(self, itemkey):
+        r = self.item_info.get(str(itemkey))
+        if r and r.get("GRADE"):
+            return r["GRADE"]
         g = self.grade_id(itemkey)
         return self.egrade.get(str(g)) if g is not None else None
 
     def max_slots(self, itemkey):
-        """Quantos slots de cada tipo a grade do item permite."""
+        """Quantos slots de cada tipo a grade do item permite (grade desconhecida = nenhum)."""
         r = self.grades_by_name.get(self.grade_name(itemkey))
         if not r:
-            return {"DECORATION": 2, "ENGRAVING": 2, "INSCRIPTION": 2}  # fallback permissivo
+            return dict.fromkeys(TYPES, 0)
         return {"DECORATION": int(r["ExtraSlotAmount_Decoration"]),
                 "ENGRAVING": int(r["ExtraSlotAmount_Engraving"]),
                 "INSCRIPTION": int(r["ExtraSlotAmount_Inscription"])}
 
     def slot_allowed(self, itemkey, slot_index):
+        if not 0 <= slot_index < len(SLOT_MATERIAL_TYPE):
+            return False
         mt = SLOT_MATERIAL_TYPE[slot_index]
         return (slot_index % 2) < self.max_slots(itemkey)[mt]
 
-    # ---- contadores (corrige o bug: o jogo usa EnchantCount p/ ATIVAR o efeito) ----
+    def enchant_len(self, itemkey):
+        """Tamanho de EnchantData que o jogo grava para a grade do item (0/2/4/6)."""
+        ms = self.max_slots(itemkey)
+        return max([2 * (i + 1) for i, t in enumerate(TYPES) if ms[t] > 0] or [0])
+
+    def enchantable(self, itemkey):
+        """None se o editor pode encantar o item; senao o motivo (invariante 4, P3-8)."""
+        try:
+            k = int(itemkey)
+        except (TypeError, ValueError):
+            return "ItemKey inválido"
+        if k >= STEAM_ITEM_KEY_MIN:
+            return "item da Steam (ItemKey %s): somente leitura" % k
+        if str(k) not in self.gear:
+            return "item %s fora de GearInfoData" % k
+        if self.grade_name(k) not in self.grades_by_name:
+            return "grade do item %s desconhecida" % k
+        return None
+
+    # ---- contadores ----
     def recount_enchants(self, item):
-        """Recalcula EnchantCount[3] = nº de slots preenchidos [deco, eng, insc]."""
-        ed = item.get("EnchantData", [])
-        f = lambda i: 1 if i < len(ed) and ed[i].get("MaterialKey", 0) != 0 else 0
+        """EnchantCount[3] = slots ocupados por tipo [deco, eng, insc]. O jogo usa para achar
+        slot livre, na UI e no mercado; nunca pode ficar menor que os slots ocupados."""
+        ed = item.get("EnchantData") or []
+        f = lambda i: 1 if i < len(ed) and is_filled(ed[i]) else 0
         item["EnchantCount"] = [f(0) + f(1), f(2) + f(3), f(4) + f(5)]
 
     def bump_applied(self, item, slot_index):
@@ -174,6 +217,9 @@ class GameData:
         return self.base_key(itemkey) in self.icon_map
 
     def gear_group(self, itemkey):
+        r = self.item_info.get(str(itemkey))
+        if r is not None:
+            return r.get("GearGroup") or None
         d = int(itemkey) // 100000
         return {3: "WEAPON", 4: "WEAPON", 5: "ARMOR", 6: "ACCESSORY"}.get(d)
 
@@ -217,14 +263,16 @@ class GameData:
                 continue
             st = tiers[0]["statType"]
             mtp = tiers[0]["modType"]
+            if st not in self.stat_name_to_id or mtp not in self.modtype_name_to_id:
+                continue  # stat/modtype fora dos enums: nao oferecer (P2-5)
             opts.append({
                 "statModKey": int(row["StatModKey"]),
                 "gearGroup": row["GearGroup"],
                 "statType": st,
-                "statTypeId": self.stat_name_to_id.get(st, 0),
+                "statTypeId": self.stat_name_to_id[st],
                 "statName": self.pretty_stat(st),
                 "modType": mtp,
-                "modTypeId": self.modtype_name_to_id.get(mtp, 0),
+                "modTypeId": self.modtype_name_to_id[mtp],
                 "tiers": tiers,
             })
         return opts
@@ -236,53 +284,99 @@ class GameData:
         return {"min": int(si["MinValue"]), "max": int(si["MaxValue"]), "interval": int(si["Interval"]),
                 "statType": si["STATTYPE"], "modType": si["MODTYPE"]}
 
-    # ---- construir / validar um EnchantData ----
-    def build_enchant(self, slot_index, material_key, statmodkey, tier, value):
+    # ---- construir / validar / gravar um EnchantData ----
+    def enchant_fields(self, slot_index, item_key, material_key, statmodkey, tier, value):
+        """Os 7 campos de um encantamento que o jogo gera para esse slot do item.
+        ValueError se a combinacao nao existe nas tabelas; nao mexe no item."""
+        why = self.enchantable(item_key)
+        if why:
+            raise ValueError(why)
+        if not self.slot_allowed(item_key, slot_index):
+            raise ValueError("a grade %s do item não tem esse slot" % self.grade_name(item_key))
         si = self.statmod.get((str(statmodkey), str(tier)))
         if not si:
             raise ValueError("StatModKey/Tier inexistente")
+        if si["STATTYPE"] not in self.stat_name_to_id or si["MODTYPE"] not in self.modtype_name_to_id:
+            raise ValueError("StatType/ModType %s/%s fora dos enums" % (si["STATTYPE"], si["MODTYPE"]))
         mtype = SLOT_MATERIAL_TYPE[slot_index]
-        return {
+        ed = {
             "StatModKey": int(statmodkey),
             "Tier": int(tier),
             "Value": int(value),
             "RecipeType": RECIPE_TYPE[mtype],
-            "ModType": self.modtype_name_to_id.get(si["MODTYPE"], 0),
+            "ModType": self.modtype_name_to_id[si["MODTYPE"]],
             "MaterialKey": int(material_key),
-            "StatType": self.stat_name_to_id.get(si["STATTYPE"], 0),
+            "StatType": self.stat_name_to_id[si["STATTYPE"]],
         }
-
-    def empty_enchant(self):
-        return {"StatModKey": 0, "Tier": 0, "Value": 0, "RecipeType": 0,
-                "ModType": 0, "MaterialKey": 0, "StatType": 0}
+        errs = self.validate_enchant(slot_index, item_key, ed)
+        if errs:
+            raise ValueError("; ".join(errs))
+        return ed
 
     def validate_enchant(self, slot_index, item_key, ed):
-        """Valida coerencia de um EnchantData (nao-vazio). Retorna lista de erros (vazia = ok)."""
+        """Confere um EnchantData contra as tabelas da versao de data/. Lista de erros (vazia = ok)."""
+        if not is_filled(ed):
+            return []  # slot vazio e valido
         errs = []
-        if not ed or ed.get("MaterialKey", 0) == 0:
-            return errs  # slot vazio e valido
-        mk = str(ed["MaterialKey"])
+        want = SLOT_MATERIAL_TYPE[slot_index] if 0 <= slot_index < len(SLOT_MATERIAL_TYPE) else None
+        if not self.slot_allowed(item_key, slot_index):
+            errs.append("a grade do item não tem esse slot")
+        mk = str(ed.get("MaterialKey", 0))
         mat = self.materials.get(mk)
         if not mat:
-            return [f"MaterialKey {mk} desconhecido"]
-        want = SLOT_MATERIAL_TYPE[slot_index]
+            return errs + [f"MaterialKey {mk} desconhecido"]
         if mat["MATERIALTYPE"] != want:
-            errs.append(f"material e {mat['MATERIALTYPE']}, mas o slot e {want}")
+            errs.append(f"material é {mat['MATERIALTYPE']}, mas o slot é {want}")
+        if want and ed.get("RecipeType") != RECIPE_TYPE[want]:
+            errs.append(f"RecipeType {ed.get('RecipeType')} não é o do slot ({RECIPE_TYPE[want]})")
+        if int(ed.get("Tier", 0)) < 1:
+            errs.append("Tier menor que 1")
         gg = self.gear_group(item_key)
         opt = next((o for o in self.stat_options(mk, gg) if o["statModKey"] == ed.get("StatModKey")), None)
         if not opt:
-            errs.append("StatModKey nao pertence ao material/grupo do item")
+            errs.append("StatModKey não pertence ao material/grupo do item")
             return errs
         tier = next((t for t in opt["tiers"] if t["tier"] == ed.get("Tier")), None)
         if not tier:
-            errs.append(f"Tier {ed.get('Tier')} invalido para esse stat")
+            errs.append(f"Tier {ed.get('Tier')} inválido para esse stat")
             return errs
+        if (ed.get("StatType"), ed.get("ModType")) != (self.stat_name_to_id.get(tier["statType"]),
+                                                       self.modtype_name_to_id.get(tier["modType"])):
+            errs.append("StatType/ModType não batem com a tabela")
         v = ed.get("Value", 0)
         if not (tier["min"] <= v <= tier["max"]):
             errs.append(f"Value {v} fora do range [{tier['min']},{tier['max']}]")
         elif tier["interval"] and (v - tier["min"]) % tier["interval"] != 0:
-            errs.append(f"Value {v} nao respeita o passo {tier['interval']}")
+            errs.append(f"Value {v} não respeita o passo {tier['interval']}")
         return errs
+
+    def pad_enchants(self, item):
+        """Completa EnchantData ate o tamanho da grade, como o jogo ao salvar; nunca corta."""
+        eds = item.setdefault("EnchantData", [])
+        while len(eds) < self.enchant_len(item["ItemKey"]):
+            eds.append(dict(empty_fields(), EnchantVersion=None))
+        return eds
+
+    def write_enchant(self, item, slot_index, fields, version):
+        """Grava os 7 campos no dict do slot, campo a campo (preserva o resto). Slot que muda
+        recebe EnchantVersion = version, como o jogo ao rolar; slot igual nao e tocado.
+        Devolve True se mudou."""
+        eds = self.pad_enchants(item)
+        ed = eds[slot_index]
+        if all(ed.get(k, 0) == v for k, v in fields.items()):
+            return False
+        ed.update(fields)
+        ed["EnchantVersion"] = version
+        return True
+
+    def clear_enchant(self, item, slot_index):
+        """Extracao: zera o slot sem deslocar os outros. Devolve True se havia encantamento."""
+        eds = item.get("EnchantData") or []
+        if not 0 <= slot_index < len(eds) or not is_filled(eds[slot_index]):
+            return False
+        eds[slot_index].update(empty_fields())
+        eds[slot_index]["EnchantVersion"] = None
+        return True
 
     def describe_enchant(self, ed, locale="en", enums=None):
         """Texto curto legivel de um EnchantData para a UI."""

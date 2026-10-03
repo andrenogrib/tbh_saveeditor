@@ -101,8 +101,8 @@ class RoutesTest(SaveCase):
         self.assertEqual(it.get(fld), before.get(fld))  # Extracao nao conta aplicacao
         self.save_and_check(allowed=["player.itemSaveDatas[%d]" % self.item_index(it)])
 
-    @unittest.expectedFailure  # P1-4: build_enchant/empty_enchant recriam o dict e apagam EnchantVersion
     def test_set_enchant_preserva_enchant_version(self):
+        """P1-4: slot alterado recebe a versao do save; limpar mantem a chave."""
         it, slot = self.slot_target(filled=False)
         it["EnchantData"][slot]["EnchantVersion"] = None  # como o jogo grava
         self.assertEqual(self.set_enchant(it, slot, _option(it["ItemKey"], slot))[0], 200)
@@ -112,8 +112,8 @@ class RoutesTest(SaveCase):
         self.ok("POST", "/api/set_enchant", {"uniqueId": str(it2["UniqueId"]), "slot": slot2, "clear": True})
         self.assertIn("EnchantVersion", it2["EnchantData"][slot2])
 
-    @unittest.expectedFailure  # P2-1: set_enchant estende EnchantData antes de validar
     def test_set_enchant_invalido_nao_muta(self):
+        """P2-1: erro 400 nao deixa o item alterado."""
         gd = GD()
         it = next((it for it in self.save.player["itemSaveDatas"]
                    if gd.gear_group(it["ItemKey"]) and len(it.get("EnchantData", [])) < 6
@@ -128,6 +128,7 @@ class RoutesTest(SaveCase):
 
     # ---------- auto-build ----------
     def test_auto_build(self):
+        lens = {id(it): len(it.get("EnchantData", [])) for it in self.save.player["itemSaveDatas"]}
         res = self.ok("POST", "/api/auto_build", {"mode": "balanced", "overwrite": True})
         self.assertTrue(res.get("ok"))
         gd = GD()
@@ -135,12 +136,26 @@ class RoutesTest(SaveCase):
         for _h, it in self.equipped_items():
             idx.add(self.item_index(it))
             for i, ed in enumerate(it.get("EnchantData", [])[:6]):
-                self.assertEqual(gd.validate_enchant(i, it["ItemKey"], ed), [], (it["ItemKey"], i))
-        # allow_removed: P1-4 (o auto-build ainda apaga EnchantVersion; ver teste abaixo)
-        self.save_and_check(allowed=["player.itemSaveDatas[%d]" % i for i in sorted(idx)], allow_removed=True)
+                if gd.slot_allowed(it["ItemKey"], i):
+                    self.assertEqual(gd.validate_enchant(i, it["ItemKey"], ed), [], (it["ItemKey"], i))
+            # P3-1: so completa ate a grade, nunca alem
+            self.assertEqual(len(it["EnchantData"]), max(lens[id(it)], gd.enchant_len(it["ItemKey"])))
+        self.save_and_check(allowed=["player.itemSaveDatas[%d]" % i for i in sorted(idx)])
 
-    @unittest.expectedFailure  # P1-3: auto_build compara o dict inteiro e reescreve slot igual
+    def test_set_enchant_item_fora_de_gear(self):
+        """Invariante 4: so encanta item que existe em GearInfoData."""
+        it = next((it for it in self.save.player["itemSaveDatas"] if str(it["ItemKey"]) not in GD().gear), None)
+        if it is None:
+            self.skipTest("todo item do save e equipamento")
+        before = copy.deepcopy(it)
+        code, _res = self.api("POST", "/api/set_enchant", {"uniqueId": str(it["UniqueId"]), "slot": 0,
+                                                           "materialKey": 119001, "statModKey": 103401,
+                                                           "tier": 10, "value": 160})
+        self.assertEqual(code, 400)
+        self.assertEqual(it, before)
+
     def test_auto_build_nao_reescreve_slot_igual(self):
+        """P1-3: so os 7 campos contam; slot igual nao e regravado nem contado."""
         self.ok("POST", "/api/auto_build", {"mode": "balanced", "overwrite": True})
         # o jogo regrava todo slot com "EnchantVersion": null
         for _h, it in self.equipped_items():
