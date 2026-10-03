@@ -190,12 +190,27 @@ def runes_summary():
     return {"total": total, "maxed": maxed, "unknown": unknown}
 
 
+def pet_progress(pet_key):
+    """Condicao de desbloqueio do pet: abates atuais x necessarios (agregado Type 0 do save)."""
+    info = GD.pet_info.get(str(pet_key)) or {}
+    if info.get("UnlockCondition") != "KillMonster":
+        return {"condition": info.get("UnlockCondition")}
+    kills = sum(int(a.get("Value", 0)) for a in State.save.player.get("aggregateSaveDatas") or []
+                if a.get("Type") == 0 and str(a.get("SubKey")) == str(info.get("Param1")))
+    return {"condition": "KillMonster", "monsterKey": info.get("Param1"),
+            "kills": kills, "need": int(info.get("Param2") or 0)}
+
+
 def player_payload():
     p = State.save.player
     currencies = [{"key": c.get("Key"), "name": GD.currency_name(c.get("Key"), State.locale),
                    "quantity": c.get("Quantity", 0)} for c in p.get("currenySaveDatas", [])]
-    pets = [{"key": x.get("PetKey"), "name": GD.pet_name(x.get("PetKey"), State.locale),
-             "unlocked": bool(x.get("IsUnlock"))} for x in p.get("PetSaveData", [])]
+    pets = []
+    for x in p.get("PetSaveData", []):
+        d = {"key": x.get("PetKey"), "name": GD.pet_name(x.get("PetKey"), State.locale),
+             "unlocked": bool(x.get("IsUnlock")), "dlc": GD.pet_is_dlc(x.get("PetKey"))}
+        d.update(pet_progress(x.get("PetKey")))
+        pets.append(d)
     cube = p.get("cubeSaveLevelData") or {}
     arranged = (p.get("commonSaveData") or {}).get("ArrangedPetKey")
     return {"currencies": currencies, "pets": pets, "arrangedPetKey": arranged,
@@ -430,6 +445,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
                         if str(x.get("PetKey")) == str(body.get("petKey"))), None)
             if not pet:
                 return self._send(404, {"error": "pet não encontrado no save"})
+            if str(pet.get("PetKey")) not in GD.pet_info:
+                return self._send(400, {"error": "pet fora de PetInfoData"})
+            if GD.pet_is_dlc(pet.get("PetKey")):  # P1-7: posse do DLC e da Steam, nao do save
+                return self._send(400, {"error": "pet de DLC — gerenciado pela Steam; o editor não trava nem destrava"})
             unlock = bool(body.get("unlock"))
             arranged = (State.save.player.get("commonSaveData") or {}).get("ArrangedPetKey")
             if not unlock and str(arranged) == str(pet.get("PetKey")):
@@ -437,7 +456,12 @@ class Handler(http.server.BaseHTTPRequestHandler):
             pet["IsUnlock"] = unlock
             if unlock:
                 pet["IsViewed"] = True
-            return self._send(200, {"ok": True, "petKey": pet.get("PetKey"), "unlocked": unlock})
+            res = {"ok": True, "petKey": pet.get("PetKey"), "unlocked": unlock}
+            prog = pet_progress(pet.get("PetKey"))
+            if unlock and prog.get("kills", 0) < prog.get("need", 0):
+                res["warning"] = ("condição do jogo não cumprida (%s de %s abates): o jogo pode travar "
+                                  "o pet de novo" % (fmt_num(prog["kills"]), fmt_num(prog["need"])))
+            return self._send(200, res)
         if p == "/api/max_runes":
             if not State.save:
                 return self._send(400, {"error": "save nao carregado"})

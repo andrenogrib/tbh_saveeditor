@@ -228,15 +228,19 @@ class RoutesTest(SaveCase):
             self.assertEqual(self.api("POST", "/api/set_pet", {"petKey": arranged, "unlock": False})[0], 400)
         self.save_and_check(allowed=["player.PetSaveData"])
 
-    @unittest.expectedFailure  # P1-7: o editor trava/destrava pet de DLC sem checar posse
     def test_set_pet_dlc_so_exibicao(self):
+        """P1-7: pet de DLC so exibicao (o jogo nunca volta a travar pet de DLC)."""
         pets, arranged = self._pets()
         pet = next((p for p in pets if p["PetKey"] != arranged and p["PetKey"] >= 6000), None)
         if pet is None:
             self.skipTest("sem pet de DLC no save")
+        before = dict(pet)
         for unlock in (False, True):
             code, _res = self.api("POST", "/api/set_pet", {"petKey": pet["PetKey"], "unlock": unlock})
             self.assertEqual(code, 400)
+        self.assertEqual(pet, before)
+        dlc = [x for x in self.ok("GET", "/api/player")["pets"] if x["key"] == pet["PetKey"]]
+        self.assertTrue(dlc and dlc[0]["dlc"])
 
     # ---------- runas ----------
     def test_max_runes(self):
