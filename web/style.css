@@ -118,6 +118,9 @@ main { display: grid; grid-template-columns: 200px 320px 1fr; gap: 12px; padding
 .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 .toast.err { border-color: var(--bad); color: #ffd4d4; }
 .toast.ok { border-color: var(--ok); color: #d4ffe2; }
+details.build { margin: 6px 0 10px; font-size: 13px; }
+details.build summary { cursor: pointer; color: var(--accent2); }
+details.build .row { display: flex; justify-content: space-between; gap: 12px; padding: 2px 0; }
 .toast.warn { border-color: var(--accent); color: #ffe7c2; }
 .note { background: #2a2416; border-bottom: 1px solid #4a3d1c; color: #ffe2a8; font-size: 12px; padding: 6px 16px; }
 .note .ver { color: var(--dim); margin-left: 8px; }

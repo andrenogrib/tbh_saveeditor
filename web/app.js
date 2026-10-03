@@ -211,6 +211,14 @@ function renderHeroEdit() {
     r.append(i); box.append(r);
     return i;
   };
+  if (h.build && h.build.length) {
+    const det = el("details", "build");
+    det.append(el("summary", null, `Resumo da build (${h.build.reduce((n, b) => n + b.slots, 0)} slots encantados)`));
+    h.build.forEach((b) => det.append(el("div", "row",
+      `<span>${b.stat} <small>${b.modType}</small></span><span>${fmt(b.total)} <small>· ${b.slots} slot(s)</small></span>`)));
+    det.append(el("div", "hint", "Soma dos valores dos encantamentos dos itens equipados, na mesma unidade dos slots."));
+    box.append(det);
+  }
   if (!h.unlocked) {
     box.append(el("div", "readonly", "Herói bloqueado no jogo — não editável."));
     return;

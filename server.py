@@ -233,6 +233,23 @@ def bag_payload():
     return {"items": items}
 
 
+def build_summary(h, items_by_uid):
+    """Soma dos encantamentos dos itens equipados por (atributo, tipo de modificador), so nos
+    slots que a grade do item permite (os de fora o jogo descarta). Valores como gravados no save."""
+    acc = {}
+    for uid in h.get("equippedItemIds", []):
+        it = items_by_uid.get(str(uid))
+        for i, ed in enumerate((it or {}).get("EnchantData") or []):
+            if i >= len(SLOT_LABELS) or not gamedata.is_filled(ed) or not GD.slot_allowed(it["ItemKey"], i):
+                continue
+            si = GD.statmod.get((str(ed.get("StatModKey")), str(ed.get("Tier"))))
+            key = (GD.pretty_stat(si["STATTYPE"]), si["MODTYPE"]) if si else ("stat %s" % ed.get("StatType"), "?")
+            b = acc.setdefault(key, {"stat": key[0], "modType": key[1], "total": 0, "slots": 0})
+            b["total"] += int(ed.get("Value", 0))
+            b["slots"] += 1
+    return sorted(acc.values(), key=lambda b: (b["stat"], b["modType"]))
+
+
 def heroes_payload():
     sf = State.save
     items_by_uid = {str(it["UniqueId"]): it for it in sf.player.get("itemSaveDatas", [])}
@@ -248,7 +265,8 @@ def heroes_payload():
                   for k in h.get("equippedSKillKey", []) if int(k) > 0]
         d = hero_brief(h)
         d.update({"name": GD.hero_name(h.get("heroKey"), State.locale),
-                  "klass": GD.hero_class(h.get("heroKey")), "items": slots, "skills": skills})
+                  "klass": GD.hero_class(h.get("heroKey")), "items": slots, "skills": skills,
+                  "build": build_summary(h, items_by_uid)})
         out.append(d)
     return {"heroes": out, "locale": State.locale, "path": State.path,
             "playTimeMinutes": round(float(sf.account.get("playTime") or 0) / 60)}
