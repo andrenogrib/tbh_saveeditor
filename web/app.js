@@ -66,6 +66,13 @@ async function doLoad() {
 }
 async function doSave() {
   try {
+    // previa: o que muda em relacao ao arquivo em disco
+    const d = await api("GET", "/api/diff");
+    if (d.fileChanged) return toast("O arquivo mudou desde que foi carregado (o jogo salvou?): carregue de novo e refaça a edição", "err");
+    if (!d.changes.length) return toast("Nada mudou em relação ao arquivo — nada para salvar", "");
+    const lines = d.changes.slice(0, 25).map((c) => `• [${c.area}] ${c.text}`);
+    if (d.changes.length > 25) lines.push(`… e mais ${d.changes.length - 25}`);
+    if (!confirm(`Gravar ${d.changes.length} mudança(s) no save?\n\n${lines.join("\n")}`)) return;
     const r = await api("POST", "/api/save", {});
     const fix = r.fixed ? ` · ${r.fixed} item(ns) com contador corrigido` : "";
     done("Salvo!" + fix + " · ponto de volta " + r.restorePoint, r);

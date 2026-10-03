@@ -21,7 +21,7 @@ import threading
 import urllib.parse
 import webbrowser
 
-from core import es3, gamedata, autobuild
+from core import es3, gamedata, autobuild, changes
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(ROOT, "tools"))
@@ -100,6 +100,20 @@ def list_backups():
         meta["file"] = os.path.join(BACKUP_DIR, bid, os.path.basename(meta.get("file") or ""))
         out.append(meta)
     return out
+
+
+def repair_counts(player, pending_uids):
+    """EnchantCount = slots ocupados, so nos itens que o editor pode editar (item Steam, fora
+    das tabelas ou com transacao pendente fica como esta). Devolve quantos itens mudaram."""
+    fixed = 0
+    for it in player.get("itemSaveDatas", []):
+        if GD.enchantable(it["ItemKey"]) or str(it.get("UniqueId")) in pending_uids:
+            continue
+        before = it.get("EnchantCount")
+        GD.recount_enchants(it)
+        if it["EnchantCount"] != before:
+            fixed += 1
+    return fixed
 
 
 def same_file(a, b):
@@ -481,6 +495,20 @@ class Handler(http.server.BaseHTTPRequestHandler):
             if not State.save:
                 return self._send(400, {"error": "save nao carregado"})
             return self._send(200, player_payload())
+        if p == "/api/diff":
+            if not State.save:
+                return self._send(400, {"error": "save nao carregado"})
+            try:  # o que vai mudar em relacao ao arquivo em disco, com o reparo que o Salvar faz
+                with open(State.path, "rb") as fh:
+                    raw = fh.read()
+                disk = es3.SaveFile.from_bytes(raw)
+            except Exception as e:
+                return self._send(400, {"error": "não deu para ler o arquivo em disco: %s" % e})
+            acc = json.loads(json.dumps(State.save.account))
+            ply = json.loads(json.dumps(State.save.player))
+            repair_counts(ply, pending_summary()[1])
+            return self._send(200, {"changes": changes.describe(GD, disk.account, disk.player, acc, ply, State.locale),
+                                    "fileChanged": stamp_of(raw) != State.stamp})
         if p == "/api/backups":
             return self._send(200, {"dir": BACKUP_DIR, "keep": KEEP_BACKUPS, "backups": list_backups()})
         if p == "/api/progress":
@@ -747,17 +775,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
             if now != State.stamp:
                 return self._send(409, {"error": "o arquivo mudou desde que foi carregado (o jogo salvou?): "
                                                  "carregue de novo e refaça a edição"})
-            # repara EnchantCount diferente dos slots ocupados, so nos itens que o editor pode
-            # editar (item Steam, fora das tabelas ou com transacao pendente fica como esta)
             names, pend = pending_summary()
-            fixed = 0
-            for it in State.save.player.get("itemSaveDatas", []):
-                if GD.enchantable(it["ItemKey"]) or str(it.get("UniqueId")) in pend:
-                    continue
-                before = it.get("EnchantCount")
-                GD.recount_enchants(it)
-                if it["EnchantCount"] != before:
-                    fixed += 1
+            fixed = repair_counts(State.save.player, pend)
             try:  # sem ponto de volta, nada e gravado
                 bid = make_restore_point(State.path, "antes de Salvar")
             except OSError as e:

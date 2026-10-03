@@ -219,6 +219,12 @@ class GameData:
         nk = (self.rune_info.get(str(rune_key)) or {}).get("NameKey", "")
         return self.string(nk, locale, "Runa %s" % rune_key)
 
+    def rune_effect(self, rune_key):
+        """Efeito da runa (STATTYPE legivel), para distinguir runas com o mesmo nome."""
+        r = self.rune_info.get(str(rune_key)) or {}
+        stats = sorted(self.rune_stats.get(r.get("LevelDataKey") or str(rune_key), ()))
+        return ", ".join(self.pretty_stat(s) for s in stats)
+
     def rune_max_level(self, rune_key):
         """Nivel maximo da runa pela tabela do jogo (None se desconhecido)."""
         r = self.rune_info.get(str(rune_key))
