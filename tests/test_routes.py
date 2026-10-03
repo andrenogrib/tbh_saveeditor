@@ -183,11 +183,24 @@ class RoutesTest(SaveCase):
         self.assertEqual((h["HeroLevel"], h["HeroExp"]), (100, 0.0))
         self.assertIsInstance(h["HeroExp"], float)
 
-    @unittest.expectedFailure  # P1-5: set_hero aceita nivel 1..1000 (maximo do jogo: 101)
-    def test_set_hero_nivel_acima_do_jogo(self):
+    def test_set_hero_limites_do_jogo(self):
+        """P1-5/P2-4: nivel 1..101, EXP abaixo do necessario e so abaixo do maximo, AP estrito."""
         h = self.save.player["heroSaveDatas"][0]
-        code, _res = self.api("POST", "/api/set_hero", {"heroKey": h["heroKey"], "level": 102})
-        self.assertEqual(code, 400)
+        before = copy.deepcopy(h)
+        key = h["heroKey"]
+        lv_max = GD().hero_level_max()
+        cap = GD().hero_exp_cap(lv_max - 1)
+        for body in ({"level": lv_max + 1}, {"level": 0},
+                     {"level": lv_max - 1, "exp": cap},                      # EXP tem de ficar < cap
+                     {"level": lv_max - 1},                                  # EXP atual nao cabe no nivel
+                     {"level": lv_max, "exp": float(h["HeroExp"]) + 1},     # no maximo, EXP so exibicao
+                     {"abilityPoint": max(0, h["HeroLevel"] - h["AllocatedHeroAbilityPoint"]) + 1}):
+            body["heroKey"] = key
+            code, res = self.api("POST", "/api/set_hero", body)
+            self.assertEqual(code, 400, (body, res))
+        self.assertEqual(h, before)
+        h["IsUnLock"] = False
+        self.assertEqual(self.api("POST", "/api/set_hero", {"heroKey": key, "level": 50, "exp": 0})[0], 400)
 
     # ---------- moeda ----------
     def test_set_currency(self):
@@ -241,9 +254,19 @@ class RoutesTest(SaveCase):
         self.ok("POST", "/api/set_cube", {"level": cube["Level"]})
         self.save_and_check(allowed=())
 
-    @unittest.expectedFailure  # P1-6: set_cube aceita nivel 1..999 (maximo do jogo: 100)
-    def test_set_cube_acima_do_jogo(self):
-        self.assertEqual(self.api("POST", "/api/set_cube", {"level": 101})[0], 400)
+    def test_set_cube_limites_do_jogo(self):
+        """P1-6: nivel 1..100; Exp < necessario do nivel; no maximo, o valor que o jogo grava."""
+        cube = self.save.player["cubeSaveLevelData"]
+        gd = GD()
+        mx = gd.cube_level_max()
+        for body in ({"level": mx + 1}, {"level": 0}, {"level": mx - 1, "exp": gd.cube_exp_cap(mx - 1)}):
+            self.assertEqual(self.api("POST", "/api/set_cube", body)[0], 400, body)
+        self.ok("POST", "/api/set_cube", {"level": 50})
+        self.assertEqual(cube["Level"], 50)
+        self.assertLess(cube["Exp"], gd.cube_exp_cap(50))
+        self.assertIsInstance(cube["Exp"], float)
+        self.ok("POST", "/api/set_cube", {"level": mx})
+        self.assertEqual((cube["Level"], cube["Exp"]), (mx, 1e9))  # float(999999999) = 1e9
 
 
 if __name__ == "__main__":

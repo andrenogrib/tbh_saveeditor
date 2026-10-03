@@ -9,6 +9,7 @@ import http.server
 import json
 import os
 import socketserver
+import struct
 import threading
 import urllib.parse
 import webbrowser
@@ -87,13 +88,12 @@ def heroes_payload():
             slots.append(item_payload(items_by_uid[str(uid)]))
         skills = [{"key": k, "name": GD.skill_name(k, State.locale)}
                   for k in h.get("equippedSKillKey", [])]
-        out.append({"heroKey": h.get("heroKey"), "level": h.get("HeroLevel"),
-                    "exp": h.get("HeroExp"), "abilityPoint": h.get("AbilityPoint", 0),
-                    "allocatedPoints": h.get("AllocatedHeroAbilityPoint", 0),
-                    "name": GD.hero_name(h.get("heroKey"), State.locale),
-                    "klass": GD.hero_class(h.get("heroKey")), "items": slots,
-                    "skills": skills})
-    return {"heroes": out, "locale": State.locale, "path": State.path}
+        d = hero_brief(h)
+        d.update({"name": GD.hero_name(h.get("heroKey"), State.locale),
+                  "klass": GD.hero_class(h.get("heroKey")), "items": slots, "skills": skills})
+        out.append(d)
+    return {"heroes": out, "locale": State.locale, "path": State.path,
+            "playTimeMinutes": round(float(sf.account.get("playTime") or 0) / 60)}
 
 
 def options_payload(material_key, item_key):
@@ -130,10 +130,52 @@ def _num(body, key, lo, hi, kind=int):
     return v
 
 
+def _changed(body, key, cur, lo, hi, kind=int):
+    """Como _num, mas None se o valor e igual ao atual: so o que muda passa pelos limites
+    (um valor legado fora da faixa, reenviado igual pela UI, nao vira erro)."""
+    v = body.get(key)
+    if v is None or v == "":
+        return None
+    try:
+        v = kind(v)
+    except (TypeError, ValueError):
+        raise ValueError("%s inválido" % key)
+    if cur is not None and v == cur:
+        return None
+    if not (lo <= v <= hi):
+        raise ValueError("%s fora do intervalo [%s, %s]" % (key, lo, hi))
+    return v
+
+
+def fmt_num(x):
+    return "{:,.0f}".format(x).replace(",", ".")
+
+
+def cube_payload(cube):
+    lv = cube.get("Level")
+    mx = GD.cube_level_max()
+    return {"level": lv, "exp": cube.get("Exp"), "levelMax": mx,
+            "expCap": GD.cube_exp_cap(lv) if isinstance(lv, int) and lv < mx else None}
+
+
+def _f32(x):
+    """Valor como o jogo guarda num float (ex. 999999999 -> 1e9)."""
+    return struct.unpack("<f", struct.pack("<f", x))[0]
+
+
+def hero_limits(h):
+    lv = h.get("HeroLevel", 1)
+    return {"levelMax": GD.hero_level_max(), "expCap": GD.hero_exp_cap(lv),
+            "apCap": max(0, int(lv) - int(h.get("AllocatedHeroAbilityPoint", 0))),
+            "unlocked": bool(h.get("IsUnLock", True))}
+
+
 def hero_brief(h):
-    return {"heroKey": h.get("heroKey"), "level": h.get("HeroLevel"), "exp": h.get("HeroExp"),
-            "abilityPoint": h.get("AbilityPoint", 0),
-            "allocatedPoints": h.get("AllocatedHeroAbilityPoint", 0)}
+    d = {"heroKey": h.get("heroKey"), "level": h.get("HeroLevel"), "exp": h.get("HeroExp"),
+         "abilityPoint": h.get("AbilityPoint", 0),
+         "allocatedPoints": h.get("AllocatedHeroAbilityPoint", 0)}
+    d.update(hero_limits(h))
+    return d
 
 
 def runes_summary():
@@ -158,7 +200,7 @@ def player_payload():
     arranged = (p.get("commonSaveData") or {}).get("ArrangedPetKey")
     return {"currencies": currencies, "pets": pets, "arrangedPetKey": arranged,
             "runes": runes_summary(),
-            "cube": {"level": cube.get("Level"), "exp": cube.get("Exp")} if cube else None}
+            "cube": cube_payload(cube) if cube else None}
 
 
 # ---------------- HTTP handler ----------------
@@ -332,10 +374,27 @@ class Handler(http.server.BaseHTTPRequestHandler):
             h = find_hero(body.get("heroKey"))
             if not h:
                 return self._send(404, {"error": "herói não encontrado"})
-            try:
-                ap = _num(body, "abilityPoint", 0, 999999)
-                lv = _num(body, "level", 1, 1000)
-                xp = _num(body, "exp", 0, 10 ** 15, float)
+            if not h.get("IsUnLock", True):
+                return self._send(400, {"error": "herói bloqueado no jogo — não editável"})
+            lv_max = GD.hero_level_max()
+            try:  # limites do jogo (P1-5, P2-4); o jogo nao corrige nivel acima de lv_max
+                lv = _changed(body, "level", h.get("HeroLevel"), 1, lv_max)
+                xp = _changed(body, "exp", h.get("HeroExp"), 0, 10 ** 15, float)
+                ap = _changed(body, "abilityPoint", h.get("AbilityPoint"), 0, 999999)
+                new_lv = h.get("HeroLevel", 1) if lv is None else lv
+                if (lv is not None or xp is not None) and new_lv >= lv_max:
+                    if xp is not None:
+                        raise ValueError("no nível máximo (%d) a EXP é só exibição" % lv_max)
+                elif lv is not None or xp is not None:
+                    cap = GD.hero_exp_cap(new_lv)
+                    new_xp = float(h.get("HeroExp") or 0) if xp is None else xp
+                    if cap is not None and new_xp >= cap:
+                        raise ValueError("no nível %d a EXP deve ficar abaixo de %s" % (new_lv, fmt_num(cap)))
+                if lv is not None or ap is not None:
+                    new_ap = h.get("AbilityPoint", 0) if ap is None else ap
+                    ap_cap = max(0, new_lv - int(h.get("AllocatedHeroAbilityPoint", 0)))
+                    if new_ap > ap_cap:
+                        raise ValueError("pontos livres no máximo %d (nível − pontos já alocados)" % ap_cap)
             except ValueError as e:
                 return self._send(400, {"error": str(e)})
             if ap is not None:
@@ -395,16 +454,30 @@ class Handler(http.server.BaseHTTPRequestHandler):
             cube = State.save.player.get("cubeSaveLevelData")
             if not isinstance(cube, dict):
                 return self._send(404, {"error": "cubo não encontrado no save"})
-            try:
-                lv = _num(body, "level", 1, 999)
-                xp = _num(body, "exp", 0, 10 ** 12, float)
+            lv_max = GD.cube_level_max()
+            try:  # P1-6: nivel 1..max; Exp coerente (o jogo corrige o nivel no load, nao o Exp)
+                lv = _changed(body, "level", cube.get("Level"), 1, lv_max)
+                xp = _changed(body, "exp", cube.get("Exp"), 0, 10 ** 12, float)
+                new_lv = cube.get("Level") if lv is None else lv
+                new_xp = None
+                if (lv is not None or xp is not None) and new_lv >= lv_max:
+                    if xp is not None:
+                        raise ValueError("no nível máximo (%d) o Exp é fixo" % lv_max)
+                    new_xp = _f32(GD.cube_exp_cap(lv_max))  # o que o jogo grava no maximo
+                elif lv is not None or xp is not None:
+                    cap = GD.cube_exp_cap(new_lv)
+                    new_xp = float(cube.get("Exp") or 0) if xp is None else xp
+                    if new_xp >= cap:
+                        if xp is not None:
+                            raise ValueError("no nível %d o Exp deve ficar abaixo de %s" % (new_lv, fmt_num(cap)))
+                        new_xp = 0.0  # o Exp antigo nao cabe no nivel novo
             except ValueError as e:
                 return self._send(400, {"error": str(e)})
             if lv is not None:
                 cube["Level"] = lv
-            if xp is not None:
-                cube["Exp"] = xp
-            return self._send(200, {"ok": True, "cube": {"level": cube.get("Level"), "exp": cube.get("Exp")}})
+            if new_xp is not None and new_xp != cube.get("Exp"):
+                cube["Exp"] = new_xp
+            return self._send(200, {"ok": True, "cube": cube_payload(cube)})
         if p == "/api/save":
             if not State.save:
                 return self._send(400, {"error": "nada carregado"})

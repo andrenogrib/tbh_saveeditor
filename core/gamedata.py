@@ -89,6 +89,23 @@ class GameData:
         self.rune_info = {r["RuneKey"]: r for r in _read_csv(os.path.join(t, "RuneInfoData.csv"))}
         self.currency_info = {r["CurrencyKey"]: r for r in _read_csv(os.path.join(t, "CurrencyInfoData.csv"))}
         self.item_info = {r["ItemKey"]: r for r in _read_csv(os.path.join(t, "ItemInfoData.csv"))}
+        # nivel -> XP para subir (heroi e cubo); limites reais do jogo
+        self.level_exp = {int(r["Level"]): float(r["ExpForLevelUp"])
+                          for r in _read_csv(os.path.join(t, "LevelInfoData.csv"))}
+        self.cube_exp = {int(r["Level"]): float(r["ExpForLevelUp"])
+                         for r in _read_csv(os.path.join(t, "CubeLevelInfoData.csv"))}
+        self.pet_info = {r["PetKey"]: r for r in _read_csv(os.path.join(t, "PetInfoData.csv"))}
+        self.skill_info = {r["SkillKey"]: r for r in _read_csv(os.path.join(t, "SkillInfoData.csv"))}
+        # (heroKey, skillKey) -> AttributeKey da skill ativa (aprendida = atributo com Level >= 1)
+        self.active_skill_attr = {(int(r["HeroKey"]), int(r["Value"])): int(r["AttributeKey"])
+                                  for r in _read_csv(os.path.join(t, "AttributeInfoData.csv"))
+                                  if r["ATTRIBUTETYPE"] == "ACTIVESKILL"}
+        self.rune_stats = {}  # LevelDataKey -> STATTYPEs dos niveis da runa
+        for r in _read_csv(os.path.join(t, "RuneLevelInfoData.csv")):
+            self.rune_stats.setdefault(r["LevelKey"], set()).add(r["STATTYPE"])
+        self.stage_info = {r["StageKey"]: r for r in _read_csv(os.path.join(t, "StageInfoData.csv"))}
+        self.plague_max = max(int(r["PlagueIntensity"])
+                              for r in _read_csv(os.path.join(t, "PlagueIntensityInfoData.csv")))
         # versao do jogo de onde data/ saiu (data/VERSION: "<versao> build=...")
         vp = os.path.join(data_dir, "VERSION")
         self.version = open(vp, encoding="utf-8").read().split()[0] if os.path.exists(vp) else None
@@ -121,7 +138,44 @@ class GameData:
     def pet_name(self, key, locale="en"):
         return self.string("PetName_%s" % key, locale, "Pet %s" % key)
 
+    # ---- limites do heroi e do cubo (LevelInfoData / CubeLevelInfoData) ----
+    def hero_level_max(self):
+        """O jogo leva o heroi ate max(LevelInfoData.Level)+1 (= 101 na 1.2.8) e nao corrige acima."""
+        return max(self.level_exp) + 1
+
+    def hero_exp_cap(self, level):
+        """XP para sair do nivel (EXP valida < isso); None no nivel maximo."""
+        return self.level_exp.get(int(level))
+
+    def cube_level_max(self):
+        return max(self.cube_exp)
+
+    def cube_exp_cap(self, level):
+        return self.cube_exp.get(int(level))
+
+    def hero_base_skill(self, hero_key):
+        v = self.hero_info.get(str(hero_key), {}).get("SkillKey")
+        return int(v) if v else None
+
+    # ---- pets ----
+    def pet_is_dlc(self, pet_key):
+        return self.pet_info.get(str(pet_key), {}).get("UnlockCondition") == "DLC"
+
     # ---- runas ----
+    def rune_is_chest(self, rune_key):
+        """Runa da familia bau (chance de drop, capacidade, auto-abertura, abrir todos)."""
+        r = self.rune_info.get(str(rune_key)) or {}
+        stats = self.rune_stats.get(r.get("LevelDataKey") or str(rune_key), ())
+        return any("Chest" in s for s in stats)
+
+    def rune_keys_with_stat(self, stattype):
+        return {k for k, r in self.rune_info.items()
+                if stattype in self.rune_stats.get(r.get("LevelDataKey") or k, ())}
+
+    def rune_name(self, rune_key, locale="en"):
+        nk = (self.rune_info.get(str(rune_key)) or {}).get("NameKey", "")
+        return self.string(nk, locale, "Runa %s" % rune_key)
+
     def rune_max_level(self, rune_key):
         """Nivel maximo da runa pela tabela do jogo (None se desconhecido)."""
         r = self.rune_info.get(str(rune_key))
