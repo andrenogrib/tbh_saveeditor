@@ -78,6 +78,25 @@ def es3_encrypt(plaintext, password=ES3_PASSWORD, iv=None):
     return iv + _aes_cbc_encrypt(key, iv, _pkcs7_pad(plaintext))
 
 
+def systeminfo_for(account_str, player_str, steam_id):
+    """Base64(HMAC-SHA256(chave, account|player|steamId)) sobre as strings exatas gravadas."""
+    msg = SYSTEMINFO_SEP.join([account_str, player_str, str(steam_id)]).encode("utf-8")
+    return base64.b64encode(hmac.new(SYSTEMINFO_HMAC_KEY, msg, hashlib.sha256).digest()).decode("ascii")
+
+
+def write_atomic(path, data, backup=False):
+    """Escreve <path>.tmp, guarda o atual em <path>.bak (se backup) e troca com os.replace:
+    o arquivo nunca fica pela metade."""
+    tmp = path + ".tmp"
+    with open(tmp, "wb") as fh:
+        fh.write(data)
+        fh.flush()
+        os.fsync(fh.fileno())
+    if backup and os.path.exists(path):
+        shutil.copyfile(path, path + ".bak")
+    os.replace(tmp, path)
+
+
 class SaveFile:
     """Save carregado e des-aninhado. `account` e `player` sao dicts editaveis."""
 
@@ -97,6 +116,15 @@ class SaveFile:
         es3_obj = json.loads(es3_decrypt(raw, password).decode("utf-8"))
         return cls(es3_obj, password)
 
+    def systeminfo_ok(self):
+        """O SystemInfo do arquivo confere com as strings dele (o jogo exige isso no load)."""
+        e = self._es3
+        try:
+            return e["SystemInfo"]["value"] == systeminfo_for(
+                e["AccountSaveData"]["value"], e["PlayerSaveData"]["value"], self.account.get("ownerSteamId", ""))
+        except (KeyError, TypeError):
+            return False
+
     def _serialize_inner(self, obj):
         # compacto, UTF-8 cru — igual ao Newtonsoft (semanticamente equivalente)
         return json.dumps(obj, ensure_ascii=False, separators=(",", ":"))
@@ -104,11 +132,7 @@ class SaveFile:
     def to_es3_bytes(self):
         acc = self._serialize_inner(self.account)
         ply = self._serialize_inner(self.player)
-        steam = str(self.account.get("ownerSteamId", ""))
-        msg = SYSTEMINFO_SEP.join([acc, ply, steam]).encode("utf-8")
-        sysinfo = base64.b64encode(
-            hmac.new(SYSTEMINFO_HMAC_KEY, msg, hashlib.sha256).digest()
-        ).decode("ascii")
+        sysinfo = systeminfo_for(acc, ply, self.account.get("ownerSteamId", ""))
         self._es3["AccountSaveData"]["value"] = acc
         self._es3["PlayerSaveData"]["value"] = ply
         self._es3["SystemInfo"]["value"] = sysinfo
@@ -119,12 +143,5 @@ class SaveFile:
         """Grava atomicamente: escreve <path>.tmp, guarda o atual em <path>.bak e troca com
         os.replace (o arquivo nunca fica pela metade). Devolve os bytes gravados."""
         blob = self.to_es3_bytes()
-        tmp = path + ".tmp"
-        with open(tmp, "wb") as fh:
-            fh.write(blob)
-            fh.flush()
-            os.fsync(fh.fileno())
-        if backup and os.path.exists(path):
-            shutil.copyfile(path, path + ".bak")
-        os.replace(tmp, path)
+        write_atomic(path, blob, backup)
         return blob

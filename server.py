@@ -5,12 +5,15 @@ com validacao pelas tabelas do jogo, e recalcula o SystemInfo ao salvar.
 
 Uso:  python server.py        (abre http://127.0.0.1:8765 no navegador)
 """
+import datetime
 import hashlib
 import hmac
 import http.server
 import json
 import os
+import re
 import secrets
+import shutil
 import socketserver
 import struct
 import sys
@@ -31,6 +34,10 @@ PORT = 8765
 GD = gamedata.GameData(DATA)
 # a pagina servida recebe este token; /api/* exige o token e Host/Origin locais (P2-9)
 TOKEN = secrets.token_urlsafe(24)
+# pontos de volta: copia do arquivo antes de cada Salvar/Restaurar, fora da pasta do jogo
+BACKUP_DIR = os.environ.get("TBH_EDITOR_BACKUPS") or os.path.join(tbh_paths.re_root(), "editor_backups")
+KEEP_BACKUPS = 30
+BACKUP_ID = re.compile(r"^\d{8}_\d{6}_\d{3}$")
 GOLD_WARN = 100 * 10 ** 6  # ouro acima disso: aviso (vai no snapshot; Gold_Massive em conta nova)
 ALLOWED_HOSTS = ("127.0.0.1:%d" % PORT, "localhost:%d" % PORT)
 SLOT_LABELS = ["Decoration", "Decoration", "Engraving", "Engraving", "Inscription", "Inscription"]
@@ -50,6 +57,53 @@ def stamp_of(data):
 def file_stamp(path):
     with open(path, "rb") as fh:
         return stamp_of(fh.read())
+
+
+def make_restore_point(path, reason):
+    """Copia o arquivo de `path` para BACKUP_DIR/<id>/ com meta.json e guarda so os
+    KEEP_BACKUPS mais novos. Devolve o id (data e hora com milissegundos)."""
+    with open(path, "rb") as fh:
+        data = fh.read()
+    while True:
+        bid = datetime.datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]
+        d = os.path.join(BACKUP_DIR, bid)
+        if not os.path.exists(d):
+            break
+    tbh_paths.assert_writable(d)
+    os.makedirs(d)
+    name = os.path.basename(path)
+    with open(os.path.join(d, name), "wb") as fh:
+        fh.write(data)
+    meta = {"id": bid, "source": path, "reason": reason, "file": name, "size": len(data),
+            "sha256": hashlib.sha256(data).hexdigest(),
+            "time": datetime.datetime.now().isoformat(sep=" ", timespec="seconds")}
+    with open(os.path.join(d, "meta.json"), "w", encoding="utf-8") as fh:
+        json.dump(meta, fh, ensure_ascii=False, indent=1)
+    for old in sorted((b for b in os.listdir(BACKUP_DIR) if BACKUP_ID.match(b)), reverse=True)[KEEP_BACKUPS:]:
+        shutil.rmtree(os.path.join(BACKUP_DIR, old), ignore_errors=True)
+    return bid
+
+
+def list_backups():
+    """Pontos de volta, do mais novo para o mais velho (meta.json + caminho do arquivo)."""
+    out = []
+    if not os.path.isdir(BACKUP_DIR):
+        return out
+    for bid in sorted(os.listdir(BACKUP_DIR), reverse=True):
+        if not BACKUP_ID.match(bid):
+            continue
+        try:
+            with open(os.path.join(BACKUP_DIR, bid, "meta.json"), encoding="utf-8") as fh:
+                meta = json.load(fh)
+        except (OSError, ValueError):
+            continue
+        meta["file"] = os.path.join(BACKUP_DIR, bid, os.path.basename(meta.get("file") or ""))
+        out.append(meta)
+    return out
+
+
+def same_file(a, b):
+    return bool(a and b) and os.path.normcase(os.path.abspath(a)) == os.path.normcase(os.path.abspath(b))
 
 
 def pending_summary():
@@ -427,6 +481,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
             if not State.save:
                 return self._send(400, {"error": "save nao carregado"})
             return self._send(200, player_payload())
+        if p == "/api/backups":
+            return self._send(200, {"dir": BACKUP_DIR, "keep": KEEP_BACKUPS, "backups": list_backups()})
         if p == "/api/progress":
             if not State.save:
                 return self._send(400, {"error": "save nao carregado"})
@@ -702,16 +758,48 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 GD.recount_enchants(it)
                 if it["EnchantCount"] != before:
                     fixed += 1
+            try:  # sem ponto de volta, nada e gravado
+                bid = make_restore_point(State.path, "antes de Salvar")
+            except OSError as e:
+                return self._send(500, {"error": "não deu para criar o ponto de volta (%s); nada foi gravado" % e})
             try:
                 blob = State.save.save(State.path, backup=True)  # atomico: .tmp + os.replace
                 State.stamp = stamp_of(blob)
             except Exception as e:
                 return self._send(500, {"error": str(e)})
-            res = {"ok": True, "path": State.path, "backup": State.path + ".bak", "fixed": fixed}
+            res = {"ok": True, "path": State.path, "backup": State.path + ".bak", "fixed": fixed,
+                   "restorePoint": bid}
             if names:  # P2-2: o jogo conclui essas transacoes com o servidor na proxima abertura
                 res["warning"] = ("o save tem transações pendentes (%s); os itens citados não foram editados"
                                   % ", ".join(names))
             return self._send(200, res)
+        if p == "/api/restore":
+            bid = str(body.get("id") or "")
+            meta = next((b for b in list_backups() if b["id"] == bid), None) if BACKUP_ID.match(bid) else None
+            if not meta:
+                return self._send(404, {"error": "ponto de volta não encontrado"})
+            target = meta.get("source") or ""
+            if not target:
+                return self._send(400, {"error": "ponto de volta sem arquivo de origem"})
+            if tbh_paths.is_protected(target) and tbh_paths.game_running() is not False:
+                return self._send(409, {"error": "o Taskbar Hero está aberto (ou não deu para conferir): "
+                                                 "feche o jogo antes de restaurar"})
+            try:
+                with open(meta["file"], "rb") as fh:
+                    raw = fh.read()
+                restored = es3.SaveFile.from_bytes(raw)
+                if not restored.systeminfo_ok():
+                    raise ValueError("SystemInfo não confere")
+            except Exception as e:
+                return self._send(400, {"error": "ponto de volta inválido: %s" % e})
+            try:  # restaurar tambem se desfaz: o arquivo atual vira outro ponto de volta
+                undo = make_restore_point(target, "antes de restaurar " + bid) if os.path.exists(target) else None
+                es3.write_atomic(target, raw)
+            except OSError as e:
+                return self._send(500, {"error": str(e)})
+            if same_file(State.path, target):  # o editor passa a mostrar o arquivo restaurado
+                State.save, State.stamp = restored, stamp_of(raw)
+            return self._send(200, {"ok": True, "path": target, "restored": bid, "undo": undo})
         return self._send(404, {"error": "rota desconhecida"})
 
 

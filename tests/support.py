@@ -121,6 +121,9 @@ class SaveCase(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.mkdtemp(prefix="tbh_test_")
         self.addCleanup(shutil.rmtree, self.tmp, True)
+        # pontos de volta dos testes nunca vao para a pasta real do usuario
+        self.addCleanup(setattr, server, "BACKUP_DIR", server.BACKUP_DIR)
+        server.BACKUP_DIR = os.path.join(self.tmp, "editor_backups")
         self.path = os.path.join(self.tmp, tbh_paths.LIVE_SAVE_NAME)
         tbh_paths.assert_writable(self.path)  # cinto: a copia nunca esta numa pasta protegida
         shutil.copy2(self.snapshot, self.path)

@@ -30,6 +30,7 @@
   <nav class="tabs">
     <button id="tabEquip" class="tab active">Equipamentos</button>
     <button id="tabPlayer" class="tab">Jogador</button>
+    <button id="tabBackups" class="tab">Pontos de volta</button>
   </nav>
 
   <main id="mainEquip">
@@ -95,6 +96,16 @@
     <section class="pane">
       <h2>Progresso <small>(somente leitura)</small></h2>
       <div id="progressBox"></div>
+    </section>
+  </main>
+
+  <main id="mainBackups" class="hidden">
+    <section class="pane">
+      <h2>Pontos de volta</h2>
+      <div id="backupDir" class="hint"></div>
+      <div id="backupList" class="kvlist"></div>
+      <div class="hint">Criados sozinhos antes de cada Salvar e de cada Restaurar (o arquivo de antes).
+        Restaurar exige o jogo fechado e também vira um ponto de volta, então dá para desfazer.</div>
     </section>
   </main>
 

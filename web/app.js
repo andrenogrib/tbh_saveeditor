@@ -68,7 +68,8 @@ async function doSave() {
   try {
     const r = await api("POST", "/api/save", {});
     const fix = r.fixed ? ` · ${r.fixed} item(ns) com contador corrigido` : "";
-    done("Salvo!" + fix + " · backup .bak criado", r);
+    done("Salvo!" + fix + " · ponto de volta " + r.restorePoint, r);
+    if (STATE.tab === "backups") refreshBackups();
   } catch (e) { toast("Erro ao salvar: " + e.message, "err"); }
 }
 function applyHeroes(data) {
@@ -84,9 +85,12 @@ function switchTab(t) {
   STATE.tab = t;
   $("#mainEquip").classList.toggle("hidden", t !== "equip");
   $("#mainPlayer").classList.toggle("hidden", t !== "player");
+  $("#mainBackups").classList.toggle("hidden", t !== "backups");
   $("#tabEquip").classList.toggle("active", t === "equip");
   $("#tabPlayer").classList.toggle("active", t === "player");
+  $("#tabBackups").classList.toggle("active", t === "backups");
   if (t === "player") refreshPlayer();
+  if (t === "backups") refreshBackups();
 }
 
 // ---------- heróis ----------
@@ -508,6 +512,39 @@ function renderProgress(p) {
   box.append(el("div", "hint", "O servidor do jogo é a autoridade sobre o progresso e sobrescreve o que estiver no save; por isso não há edição aqui."));
 }
 
+// ---------- pontos de volta ----------
+async function refreshBackups() {
+  const box = $("#backupList"); box.innerHTML = "";
+  try {
+    const d = await api("GET", "/api/backups");
+    $("#backupDir").textContent = `Pasta: ${d.dir} · guarda os ${d.keep} mais novos`;
+    if (!d.backups.length) { box.append(el("div", "empty", "Nenhum ponto de volta ainda: o primeiro sai no próximo Salvar.")); return; }
+    d.backups.forEach((b) => {
+      const kv = el("div", "kv");
+      kv.append(el("span", "nm", `<b>${b.time}</b> · ${b.reason}<br><small>${b.source} · ${fmt(b.size)} bytes</small>`));
+      const btn = el("button", "", "Restaurar");
+      btn.onclick = () => doRestore(b);
+      kv.append(btn); box.append(kv);
+    });
+  } catch (e) { box.append(el("div", "err", "Erro: " + e.message)); }
+}
+async function doRestore(b) {
+  if (!confirm(`Restaurar o save de ${b.time}?\n\n` +
+    "• Só com o jogo FECHADO.\n" +
+    "• O arquivo volta inteiro para aquele momento: o que o jogo gravou depois some do arquivo " +
+    "(o servidor repõe o que ele controla, como itens e progresso).\n" +
+    "• Edições não salvas no editor são descartadas.\n" +
+    "• O arquivo atual vira outro ponto de volta: dá para desfazer.")) return;
+  try {
+    const r = await api("POST", "/api/restore", { id: b.id });
+    toast("Restaurado · o arquivo anterior virou o ponto de volta " + (r.undo || "—"), "ok");
+    const st = await api("GET", "/api/state");
+    if (st.loaded && st.path === r.path) applyHeroes(await api("GET", "/api/heroes"));
+    showState(st);
+    refreshBackups();
+  } catch (e) { toast("Erro: " + e.message, "err"); }
+}
+
 // ---------- bind ----------
 $("#btnLoad").onclick = doLoad;
 $("#btnSave").onclick = doSave;
@@ -517,5 +554,6 @@ $("#abSkillHero").onclick = () => doSetSkills("hero");
 $("#abSkillAll").onclick = () => doSetSkills("all");
 $("#tabEquip").onclick = () => switchTab("equip");
 $("#tabPlayer").onclick = () => switchTab("player");
+$("#tabBackups").onclick = () => switchTab("backups");
 $("#savePath").addEventListener("keydown", (e) => { if (e.key === "Enter") doLoad(); });
 boot();

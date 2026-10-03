@@ -17,7 +17,7 @@ class SaveSafetyTest(SaveCase):
         self.addCleanup(setattr, obj, name, old)
 
     def test_recusa_com_o_jogo_aberto(self):
-        self.patch(server.tbh_paths, "is_protected", lambda p: True)
+        self.patch(server.tbh_paths, "is_protected", lambda p: server.same_file(p, self.path))  # so o save
         for running in (True, None):  # None = nao deu para conferir: trata como aberto
             self.patch(server.tbh_paths, "game_running", lambda r=running: r)
             code, res = call("POST", "/api/save", {})
