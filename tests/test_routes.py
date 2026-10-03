@@ -168,9 +168,21 @@ class RoutesTest(SaveCase):
 
     # ---------- skills ----------
     def test_set_skills(self):
+        """P2-3: so ativas do heroi aprendidas; 3a posicao so com a runa 27; len == 3, vazio = -1."""
+        gd = GD()
+        lv = {a["Key"]: a["Level"] for a in self.save.player["attributeSaveDatas"]}
+        rune27 = any(r["RuneKey"] == 27 and r["Level"] >= 1 for r in self.save.player["RuneSaveData"])
         self.ok("POST", "/api/set_skills", {"mode": "balanced"})
         for h in self.save.player["heroSaveDatas"]:
-            self.assertEqual(len(h["equippedSKillKey"]), 3)
+            sk = h["equippedSKillKey"]
+            self.assertEqual(len(sk), 3)
+            self.assertEqual(sk[0], gd.hero_base_skill(h["heroKey"]))
+            for k in sk[1:]:
+                if k != -1:
+                    attr = gd.active_skill_attr[(h["heroKey"], k)]
+                    self.assertGreaterEqual(lv.get(attr, 0), 1, (h["heroKey"], k))
+            if not rune27:
+                self.assertEqual(sk[2], -1)
         self.save_and_check(allowed=["player.heroSaveDatas"])
 
     # ---------- heroi ----------

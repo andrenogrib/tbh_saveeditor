@@ -229,17 +229,22 @@ def _skill_actives(hero_key, mode):
     return table.get(int(hero_key))
 
 
-def skill_loadout(hero_key, mode, current=None):
-    """Devolve o novo equippedSKillKey = [ataque-base, ativa1, ativa2], ou None
-    se nao ha recomendacao para a classe. Preserva a skill-base atual."""
+def skill_loadout(gd, hero_key, mode, current, learned, third_slot):
+    """Novo equippedSKillKey = [ataque-base, ativa1, ativa2] pelas regras da UI do jogo:
+    so ativas do heroi ja aprendidas (`learned`: atributo com Level >= 1); a 3a posicao so
+    com a runa que libera o slot (`third_slot`), senao -1; vazio = -1; sempre 3 posicoes.
+    Completa com as ativas atuais validas. None se nao ha recomendacao para a classe."""
     actives = _skill_actives(hero_key, mode)
     if not actives:
         return None
-    if current and len(current) >= 1:
-        base = current[0]
-    else:
-        base = int(str(int(hero_key))[:2] + "001")  # 101 -> 10001
-    return [base] + list(actives)
+    base = gd.hero_base_skill(hero_key)  # o jogo sobrescreve [0] com essa no load
+    if base is None:
+        base = current[0] if current else -1
+    picks = [k for k in actives if k in learned]
+    for k in (current or [])[1:]:
+        if k in learned and k not in picks:
+            picks.append(k)
+    return [base, picks[0] if picks else -1, picks[1] if third_slot and len(picks) > 1 else -1]
 
 
 # slots por tipo de material

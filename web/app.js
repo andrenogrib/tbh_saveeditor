@@ -148,7 +148,7 @@ function renderHeroEdit() {
   if (!h) return;
   box.append(el("div", "he-title", `<b>${h.name}</b> · pontos gastos nas skills: <b>${h.allocatedPoints}</b>`));
   if (h.skills && h.skills.length) {
-    const active = h.skills.filter((s) => s.name !== "Ataque base");
+    const active = h.skills.filter((s) => !s.base);
     box.append(el("div", "he-skills", "Skills ativas: " +
       (active.length ? active.map((s) => `<b>${s.name}</b>`).join(" · ") : "<i>nenhuma</i>")));
   }

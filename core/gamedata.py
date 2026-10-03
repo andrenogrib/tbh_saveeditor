@@ -121,11 +121,10 @@ class GameData:
         return self.hero_info.get(str(herokey), {}).get("ClassType", "")
 
     def skill_name(self, skillkey, locale="en"):
-        """Nome da skill; x0001 (ataque-base) nao tem nome proprio."""
+        """Nome da skill (SkillName_<key>; o ataque-base x0001 tambem tem o seu)."""
         s = str(skillkey)
-        if s.endswith("001") and len(s) == 5:  # ex 10001, 20001 -> ataque base
-            return "Ataque base"
-        return self.string("SkillName_%s" % skillkey, locale, "Skill %s" % skillkey)
+        base = s.endswith("001") and len(s) == 5  # ex 10001, 20001 -> ataque base
+        return self.string("SkillName_%s" % skillkey, locale, "Ataque base" if base else "Skill %s" % skillkey)
 
     # ---- strings localizadas genericas ----
     def string(self, key, locale="en", fallback=None):

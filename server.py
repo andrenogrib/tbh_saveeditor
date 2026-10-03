@@ -86,8 +86,9 @@ def heroes_payload():
             if str(uid) == "0" or str(uid) not in items_by_uid:
                 continue
             slots.append(item_payload(items_by_uid[str(uid)]))
-        skills = [{"key": k, "name": GD.skill_name(k, State.locale)}
-                  for k in h.get("equippedSKillKey", [])]
+        base = GD.hero_base_skill(h.get("heroKey"))
+        skills = [{"key": k, "name": GD.skill_name(k, State.locale), "base": k == base}
+                  for k in h.get("equippedSKillKey", []) if int(k) > 0]
         d = hero_brief(h)
         d.update({"name": GD.hero_name(h.get("heroKey"), State.locale),
                   "klass": GD.hero_class(h.get("heroKey")), "items": slots, "skills": skills})
@@ -100,6 +101,20 @@ def options_payload(material_key, item_key):
     gg = GD.gear_group(item_key)
     opts = GD.stat_options(material_key, gg)
     return {"materialKey": int(material_key), "gearGroup": gg, "options": opts}
+
+
+def learned_skills(h):
+    """Ativas do heroi com o atributo aprendido (Level >= 1 em attributeSaveDatas)."""
+    lv = {str(a.get("Key")): int(a.get("Level", 0)) for a in State.save.player.get("attributeSaveDatas") or []}
+    hk = int(h.get("heroKey"))
+    return {sk for (k, sk), attr in GD.active_skill_attr.items() if k == hk and lv.get(str(attr), 0) >= 1}
+
+
+def third_skill_slot():
+    """A 3a posicao de skill so abre com a runa de UnlockSkillSlotCount (runa 27) no nivel >= 1."""
+    keys = GD.rune_keys_with_stat("UnlockSkillSlotCount")
+    return any(str(r.get("RuneKey")) in keys and int(r.get("Level", 0)) >= 1
+               for r in State.save.player.get("RuneSaveData") or [])
 
 
 def find_item(uid):
@@ -375,8 +390,12 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 if not heroes:
                     return self._send(404, {"error": "herói não encontrado"})
             changed = 0
+            third = third_skill_slot()
             for h in heroes:
-                new = autobuild.skill_loadout(h.get("heroKey"), mode, h.get("equippedSKillKey"))
+                if not h.get("IsUnLock", True):
+                    continue  # heroi bloqueado nao e editavel
+                new = autobuild.skill_loadout(GD, h.get("heroKey"), mode, h.get("equippedSKillKey"),
+                                              learned_skills(h), third)
                 if new and new != h.get("equippedSKillKey"):
                     h["equippedSKillKey"] = new
                     changed += 1
