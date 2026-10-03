@@ -19,11 +19,12 @@ ADDITIVE = "{0}% Increased" (bucket aditivo), MULTIPLICATIVE = "% More"
 
 Chaos / mapa 3-9 (Core of the Abyss): a -60% e uma PENALIDADE de resistencia
 por dificuldade de estagio (tooltip do jogo). Nao existe Max Resistance em
-nenhum material -> o teto NAO sobe, e resistencia por slot e minuscula
-(+3% a +5.5%), entao empilhar resistencia NAO vence o -60%.
+nenhum material -> o teto NAO sobe, e resistencia por slot e pequena
+(1.2.8: +3% elemental, +6% a +9% chaos/individual), entao empilhar resistencia
+NAO vence o -60%.
 
-Defesa que funciona de verdade (valores reais, guardado/10 = display):
-  - Max HP (ADDITIVE) = +30%/slot   -> maior EHP
+Defesa que funciona de verdade (valores da 1.2.8, guardado/10 = display):
+  - Max HP (ADDITIVE) = +30%/slot (+50% na inscricao) -> maior EHP
   - Damage Reduction  = +16%/slot   -> reduz TODO dano (inclusive chaos)
   - Life Leech        = +6.5%/slot do dano vira cura -> melhor sustain p/ build de dano
   - MANTER O DANO ALTO: matar rapido e a melhor defesa (inimigo morto nao bate).
@@ -111,10 +112,10 @@ _ACC_INS_TAIL_CRIT = [CD, CC_ADD, AD_ADD]
 _ACC_INS_TAIL_CAST = [CAST, CD, CDR]
 
 # ---- ARMADURA (deco/eng defensivos; inscricao varia com o modo) ----
-# Numeros reais do jogo (valor guardado /10 = display):
+# Numeros da 1.2.8 (valor guardado /10 = display; o catalogo usa sempre a tabela de data/):
 #   Damage Reduction  = +16% menos dano (reduz TODO dano, inclusive chaos) -> defesa pesada
-#   Max HP (ADDITIVE) = +30% de vida  -> maior ganho de EHP por slot
-#   All Elemental Res = +3% (fogo/gelo/raio);  Chaos/individual = +5.5%  -> complemento fraco
+#   Max HP (ADDITIVE) = +30% de vida (+50% na inscricao) -> maior ganho de EHP por slot
+#   All Elemental Res = +3% (fogo/gelo/raio);  Chaos/individual = +6% a +9%  -> complemento fraco
 # Por isso a defesa forte e Max HP + Damage Reduction (+ Life Leech nas inscricoes),
 # NAO empilhar resistencia (que nem vence a penalidade -60% do mapa).
 ARM_DEC_DEF = [DR, ALLRES, HP_ADD, ARMOR_A]
