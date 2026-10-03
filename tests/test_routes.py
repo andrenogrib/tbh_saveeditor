@@ -32,15 +32,12 @@ def _option(item_key, slot, skip=None):
 
 class RoutesTest(SaveCase):
     # ---------- alvos ----------
-    def slot_target(self, filled, keyless=False):
-        """(item, slot) com slot permitido pela grade, vazio ou preenchido (qualquer item).
-        keyless: so slot sem a chave EnchantVersion (o P1-4 tem teste proprio)."""
+    def slot_target(self, filled):
+        """(item, slot) com slot permitido pela grade, vazio ou preenchido (qualquer item)."""
         gd = GD()
         items = [it for it in self.save.player["itemSaveDatas"] if gd.gear_group(it["ItemKey"])]
         for it in items:
             for i, ed in enumerate(it.get("EnchantData", [])[:6]):
-                if keyless and "EnchantVersion" in ed:
-                    continue
                 if gd.slot_allowed(it["ItemKey"], i) and bool(ed.get("MaterialKey")) == filled:
                     return it, i
         if not filled:  # slot permitido alem do fim do EnchantData (o jogo completa pela grade)
@@ -67,9 +64,9 @@ class RoutesTest(SaveCase):
     # ---------- encantamento ----------
     def test_set_enchant_slot_vazio(self):
         try:
-            it, slot = self.slot_target(filled=False, keyless=True)
+            it, slot = self.slot_target(filled=False)
         except unittest.SkipTest:  # save com tudo preenchido: esvazia um slot antes
-            it, slot = self.slot_target(filled=True, keyless=True)
+            it, slot = self.slot_target(filled=True)
             self.ok("POST", "/api/set_enchant", {"uniqueId": str(it["UniqueId"]), "slot": slot, "clear": True})
         mt = gamedata.SLOT_MATERIAL_TYPE[slot]
         before = copy.deepcopy(it)
@@ -87,7 +84,7 @@ class RoutesTest(SaveCase):
         self.save_and_check(allowed=["player.itemSaveDatas[%d]" % self.item_index(it)])
 
     def test_set_enchant_limpar_nao_desloca(self):
-        it, slot = self.slot_target(filled=True, keyless=True)
+        it, slot = self.slot_target(filled=True)
         mt = gamedata.SLOT_MATERIAL_TYPE[slot]
         before = copy.deepcopy(it)
         self.ok("POST", "/api/set_enchant", {"uniqueId": str(it["UniqueId"]), "slot": slot, "clear": True})
