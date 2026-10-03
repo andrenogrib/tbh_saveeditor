@@ -142,11 +142,29 @@ def pending_summary():
     return names, uids
 
 
+PLACES = (("inventorySaveDatas", "mochila"), ("stashSaveDatas", "baú"),
+          ("remakeTradingStashSaveDatas", "Trade Ship"))
+
+
+def item_places():
+    """UniqueId -> onde o item esta (slots da mochila, do bau ou do estoque do Trade Ship).
+    O Trade Ship vence: item citado la e somente leitura, mesmo que apareca em outro lugar."""
+    where = {}
+    for lst, label in PLACES:
+        for s in State.save.player.get(lst) or []:
+            u = str((s or {}).get("ItemUniqueId") or 0)
+            if u != "0" and (u not in where or label == "Trade Ship"):
+                where[u] = label
+    return where
+
+
 def item_lock(it):
     """None se o item pode ser encantado pelo editor; senao o motivo."""
     why = GD.enchantable(it["ItemKey"])
     if why:
         return why
+    if item_places().get(str(it.get("UniqueId"))) == "Trade Ship":
+        return "item no estoque do Trade Ship (troca/mercado): somente leitura"
     if str(it.get("UniqueId")) in pending_summary()[1]:
         return "item com transação pendente no servidor — abra o jogo para concluir antes de editar"
     return None
@@ -194,6 +212,25 @@ def item_payload(it):
         "enchants": enchants,
         "readOnly": item_lock(it),
     }
+
+
+def bag_payload():
+    """Equipamentos fora dos herois (mochila, bau, Trade Ship), do melhor para o pior."""
+    p = State.save.player
+    equipped = {str(u) for h in p.get("heroSaveDatas", []) for u in h.get("equippedItemIds", [])}
+    where = item_places()
+    order = {label: i for i, (_lst, label) in enumerate(PLACES)}
+    rank = {g: i for i, g in enumerate(GD.grades_by_name)}
+    items = []
+    for it in p.get("itemSaveDatas", []):
+        uid = str(it.get("UniqueId"))
+        if uid in equipped or str(it.get("ItemKey")) not in GD.gear:
+            continue
+        d = item_payload(it)
+        d["where"] = where.get(uid, "fora dos slots")
+        items.append(d)
+    items.sort(key=lambda d: (order.get(d["where"], 9), -rank.get(d["grade"], -1), d["name"]))
+    return {"items": items}
 
 
 def heroes_payload():
@@ -495,6 +532,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
             if not State.save:
                 return self._send(400, {"error": "save nao carregado"})
             return self._send(200, player_payload())
+        if p == "/api/items":
+            if not State.save:
+                return self._send(400, {"error": "save nao carregado"})
+            return self._send(200, bag_payload())
         if p == "/api/diff":
             if not State.save:
                 return self._send(400, {"error": "save nao carregado"})

@@ -2,7 +2,10 @@
 const $ = (s, r = document) => r.querySelector(s);
 const el = (t, c, h) => { const e = document.createElement(t); if (c) e.className = c; if (h != null) e.innerHTML = h; return e; };
 
-let STATE = { heroes: [], hero: null, item: null, locale: "pt", materialsCache: {}, tab: "equip", loaded: false };
+let STATE = { heroes: [], hero: null, item: null, locale: "pt", materialsCache: {}, tab: "equip", loaded: false,
+  view: "hero", bag: [] };
+// itens da tela atual: os equipados do heroi escolhido ou os da mochila/bau
+const currentItems = () => STATE.view === "bag" ? STATE.bag : (STATE.hero != null ? STATE.heroes[STATE.hero].items : []);
 const fmt = (n) => (+n).toLocaleString("pt-BR");
 
 // token da sessao do servidor (vem na pagina); /api/* recusa sem ele
@@ -81,7 +84,7 @@ async function doSave() {
 }
 function applyHeroes(data) {
   STATE.heroes = data.heroes; STATE.locale = data.locale; STATE.playTimeMinutes = data.playTimeMinutes;
-  STATE.hero = null; STATE.item = null;
+  STATE.hero = null; STATE.item = null; STATE.view = "hero"; STATE.bag = [];
   renderHeroes(); renderHeroEdit();
   $("#itemGrid").innerHTML = ""; $("#itemEmpty").style.display = "block";
   $("#enchBody").innerHTML = ""; $("#enchEmpty").style.display = "block"; $("#enchTitle").textContent = "Encantamentos";
@@ -109,9 +112,21 @@ function renderHeroes() {
     d.onclick = () => selectHero(idx);
     list.append(d);
   });
+  if (!STATE.heroes.length) return;
+  const b = el("div", "hero" + (STATE.view === "bag" ? " sel" : ""));
+  b.append(el("span", null, "🎒 Mochila e baú"), el("span", "lv", STATE.bag.length ? String(STATE.bag.length) : ""));
+  b.onclick = selectBag;
+  list.append(b);
+}
+async function selectBag() {
+  try { STATE.bag = (await api("GET", "/api/items")).items; } catch (e) { return toast("Erro: " + e.message, "err"); }
+  STATE.view = "bag"; STATE.hero = null; STATE.item = null;
+  renderHeroes(); renderHeroEdit(); renderItems();
+  $("#enchBody").innerHTML = ""; $("#enchEmpty").style.display = "block"; $("#enchTitle").textContent = "Encantamentos";
+  updateAutoBuildUI();
 }
 function selectHero(idx) {
-  STATE.hero = idx; STATE.item = null; renderHeroes(); renderHeroEdit(); renderItems();
+  STATE.view = "hero"; STATE.hero = idx; STATE.item = null; renderHeroes(); renderHeroEdit(); renderItems();
   $("#enchBody").innerHTML = ""; $("#enchEmpty").style.display = "block"; $("#enchTitle").textContent = "Encantamentos";
   updateAutoBuildUI();
 }
@@ -142,6 +157,7 @@ function refreshHeroesPreserving(data) {
   const prevHeroKey = STATE.hero != null ? STATE.heroes[STATE.hero].heroKey : null;
   const prevItemUid = STATE.item ? STATE.item.uniqueId : null;
   STATE.heroes = data.heroes; STATE.locale = data.locale;
+  if (STATE.view === "bag") { renderHeroes(); updateAutoBuildUI(); return; }  // auto-build nao mexe na mochila
   const idx = prevHeroKey != null ? STATE.heroes.findIndex((h) => h.heroKey === prevHeroKey) : -1;
   STATE.hero = idx >= 0 ? idx : null;
   STATE.item = null;
@@ -230,12 +246,13 @@ function renderHeroEdit() {
 // ---------- itens ----------
 function renderItems() {
   const grid = $("#itemGrid"); grid.innerHTML = "";
-  const h = STATE.heroes[STATE.hero];
-  $("#itemEmpty").style.display = h.items.length ? "none" : "block";
-  h.items.forEach((it) => {
+  const items = currentItems();
+  $("#itemEmpty").style.display = items.length ? "none" : "block";
+  items.forEach((it) => {
     const c = el("div", "card" + (STATE.item && STATE.item.uniqueId === it.uniqueId ? " sel" : ""));
     c.append(iconEl(it.icon, it.group || "?"));
-    c.append(el("div", "nm", it.name), el("div", "grp", it.group || ""));
+    const sub = it.where ? [it.where, it.grade].filter(Boolean).join(" · ") : (it.group || "");
+    c.append(el("div", "nm", it.name), el("div", "grp", sub));
     c.onclick = () => selectItem(it);
     grid.append(c);
   });
@@ -370,9 +387,9 @@ async function setEnchant(payload) {
   try {
     const item = await api("POST", "/api/set_enchant", payload);
     // atualiza o item no estado e re-renderiza
-    const h = STATE.heroes[STATE.hero];
-    const idx = h.items.findIndex((x) => x.uniqueId === item.uniqueId);
-    if (idx >= 0) h.items[idx] = item;
+    const list = currentItems();
+    const idx = list.findIndex((x) => x.uniqueId === item.uniqueId);
+    if (idx >= 0) list[idx] = Object.assign(item, { where: list[idx].where });
     STATE.item = item;
     renderItems(); renderEnchants();
     toast(payload.clear ? "Slot limpo" : "Encantamento aplicado — lembre de Salvar", "ok");
