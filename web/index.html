@@ -20,6 +20,12 @@
       <button id="btnSave" class="primary" disabled>Salvar no jogo</button>
     </div>
   </header>
+  <div id="serverNote" class="note">
+    ⚠ O que você grava vai para o servidor do jogo na próxima abertura (snapshot de ouro, heróis, runas,
+    cubo e itens com encantamentos). Salve com o jogo <b>fechado</b>.
+    <span id="versions" class="ver"></span>
+    <div id="gameState" class="gamestate hidden"></div>
+  </div>
 
   <nav class="tabs">
     <button id="tabEquip" class="tab active">Equipamentos</button>
@@ -78,11 +84,17 @@
     <section class="pane">
       <h2>Pets</h2>
       <div id="petGrid" class="grid"></div>
-      <div class="actions"><button id="btnAllPets">Desbloquear todos</button></div>
+      <div class="actions"><button id="btnAllPets">Desbloquear todos (exceto DLC)</button></div>
+      <div class="hint">Pets de abate: o jogo pode travar de novo se a condição (abates) não estiver
+        cumprida. Pets de DLC são da Steam e o editor não mexe neles.</div>
     </section>
     <section class="pane">
       <h2>Runas</h2>
       <div id="runeBox"></div>
+    </section>
+    <section class="pane">
+      <h2>Progresso <small>(somente leitura)</small></h2>
+      <div id="progressBox"></div>
     </section>
   </main>
 

@@ -83,7 +83,6 @@ class GameData:
         enums = json.load(open(os.path.join(data_dir, "enums.json"), encoding="utf-8"))
         self.stat_name_to_id = {v: int(k) for k, v in enums["StatType"].items()}
         self.modtype_name_to_id = {v: int(k) for k, v in enums["MODTYPE"].items()}
-        self.egrade = enums["EGradeType"]  # id(str) -> nome
         self.grades_by_name = {r["GRADE"]: r for r in _read_csv(os.path.join(t, "GradeInfoData.csv"))}
         self.hero_info = {r["HeroKey"]: r for r in _read_csv(os.path.join(t, "HeroInfoData.csv"))}
         self.rune_info = {r["RuneKey"]: r for r in _read_csv(os.path.join(t, "RuneInfoData.csv"))}
@@ -157,6 +156,24 @@ class GameData:
         return int(v) if v else None
 
     # ---- pets ----
+    def stage(self, stage_key, locale="en"):
+        """Resumo de um estagio pela StageInfoData (nome localizado, tipo, ato, numero)."""
+        r = self.stage_info.get(str(stage_key))
+        if not r:
+            return {"key": stage_key, "name": None}
+        return {"key": stage_key, "name": self.string(r["StageNameKey"], locale, r["StageNameKey"]),
+                "type": r["STAGETYPE"], "difficulty": r["STAGEDIFFICULITY"],
+                "act": r["Act"], "no": r["StageNo"]}
+
+    def difficulties(self):
+        """Dificuldades na ordem em que aparecem pela StageKey (NORMAL, NIGHTMARE, ...)."""
+        out = []
+        for k in sorted(self.stage_info, key=int):
+            d = self.stage_info[k]["STAGEDIFFICULITY"]
+            if d not in out:
+                out.append(d)
+        return out
+
     def pet_is_dlc(self, pet_key):
         return self.pet_info.get(str(pet_key), {}).get("UnlockCondition") == "DLC"
 
@@ -186,16 +203,10 @@ class GameData:
             return None
 
     # ---- grade e slots ----
-    def grade_id(self, itemkey):
-        s = str(itemkey)
-        return int(s[2]) if len(s) == 6 and s.isdigit() and int(s) >= 300000 else None
-
     def grade_name(self, itemkey):
+        """Grade pela ItemInfoData (item fora da tabela = None)."""
         r = self.item_info.get(str(itemkey))
-        if r and r.get("GRADE"):
-            return r["GRADE"]
-        g = self.grade_id(itemkey)
-        return self.egrade.get(str(g)) if g is not None else None
+        return (r.get("GRADE") or None) if r else None
 
     def max_slots(self, itemkey):
         """Quantos slots de cada tipo a grade do item permite (grade desconhecida = nenhum)."""
@@ -261,20 +272,38 @@ class GameData:
     # ---- lookups basicos ----
     def name(self, itemkey, locale="en"):
         bk = self.base_key(itemkey)
-        return (self.names.get(locale, {}).get(bk) or self.names["en"].get(bk) or f"#{itemkey}")
+        n = self.names.get(locale, {}).get(bk) or self.names["en"].get(bk)
+        if n:
+            return n
+        # sem nome pelo modelo base: NameKey de ItemInfoData (caixas trazem o nome literal)
+        nk = (self.item_info.get(str(itemkey)) or {}).get("NameKey") or ""
+        if nk.startswith("ItemName_"):
+            k = nk[len("ItemName_"):]
+            n = self.names.get(locale, {}).get(k) or self.names["en"].get(k)
+        elif nk:
+            n = self.string(nk, locale, nk)
+        return n or f"#{itemkey}"
+
+    def icon_key(self, itemkey):
+        """Chave em icon_map para o item: modelo base ou o sufixo de ItemInfoData.IconPath."""
+        bk = self.base_key(itemkey)
+        if bk in self.icon_map:
+            return bk
+        ip = (self.item_info.get(str(itemkey)) or {}).get("IconPath") or ""
+        k = ip.rsplit("_", 1)[-1]
+        return k if k in self.icon_map else None
 
     def icon_file(self, itemkey):
-        return self.icon_map.get(self.base_key(itemkey))
+        k = self.icon_key(itemkey)
+        return self.icon_map.get(k) if k else None
 
     def has_icon(self, itemkey):
-        return self.base_key(itemkey) in self.icon_map
+        return self.icon_key(itemkey) is not None
 
     def gear_group(self, itemkey):
+        """WEAPON/ARMOR/ACCESSORY pela ItemInfoData (material, caixa ou fora da tabela = None)."""
         r = self.item_info.get(str(itemkey))
-        if r is not None:
-            return r.get("GearGroup") or None
-        d = int(itemkey) // 100000
-        return {3: "WEAPON", 4: "WEAPON", 5: "ARMOR", 6: "ACCESSORY"}.get(d)
+        return (r.get("GearGroup") or None) if r else None
 
     def slot_material_type(self, slot_index):
         return SLOT_MATERIAL_TYPE[slot_index]

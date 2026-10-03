@@ -31,6 +31,7 @@ PORT = 8765
 GD = gamedata.GameData(DATA)
 # a pagina servida recebe este token; /api/* exige o token e Host/Origin locais (P2-9)
 TOKEN = secrets.token_urlsafe(24)
+GOLD_WARN = 100 * 10 ** 6  # ouro acima disso: aviso (vai no snapshot; Gold_Massive em conta nova)
 ALLOWED_HOSTS = ("127.0.0.1:%d" % PORT, "localhost:%d" % PORT)
 SLOT_LABELS = ["Decoration", "Decoration", "Engraving", "Engraving", "Inscription", "Inscription"]
 
@@ -258,6 +259,20 @@ def runes_summary():
     return {"total": total, "maxed": maxed, "unknown": unknown, "below": below, "chest": chest}
 
 
+def progress_payload():
+    """Progresso so para leitura: o servidor do jogo e a autoridade sobre estagios."""
+    c = State.save.player.get("commonSaveData") or {}
+    st = lambda k: GD.stage(k, State.locale)  # noqa: E731
+    plague = c.get("lastPlayedPlagueIntensity") or []
+    diffs = GD.difficulties()
+    return {"current": st(c.get("currentStageKey")), "wave": c.get("currentStageWave"),
+            "unlockedUpTo": st(c.get("maxCompletedStage")), "lastCleared": st(c.get("lastClearedStageKey")),
+            "prevNormal": st(c.get("prevNormalStageKey")),
+            "plague": [{"difficulty": diffs[i] if i < len(diffs) else str(i), "intensity": v}
+                       for i, v in enumerate(plague)],
+            "playTimeHours": round(float(State.save.account.get("playTime") or 0) / 3600, 1)}
+
+
 def pet_progress(pet_key):
     """Condicao de desbloqueio do pet: abates atuais x necessarios (agregado Type 0 do save)."""
     info = GD.pet_info.get(str(pet_key)) or {}
@@ -343,8 +358,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if p == "/style.css":
             return self._file(os.path.join(WEB, "style.css"), "text/css; charset=utf-8")
         if p.startswith("/icons/"):
-            key = GD.base_key(p[len("/icons/"):].replace(".png", ""))
-            return self._file(os.path.join(ICONS, "%s.png" % key), "image/png")
+            f = GD.icon_file(p[len("/icons/"):].replace(".png", ""))
+            if not f:
+                return self._send(404, {"error": "sem ícone"})
+            return self._file(os.path.join(ICONS, os.path.basename(f)), "image/png")
         if p == "/api/state":
             path = State.path or default_save_path()
             return self._send(200, {"loaded": State.save is not None, "path": path, "locale": State.locale,
@@ -378,6 +395,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
             if not State.save:
                 return self._send(400, {"error": "save nao carregado"})
             return self._send(200, player_payload())
+        if p == "/api/progress":
+            if not State.save:
+                return self._send(400, {"error": "save nao carregado"})
+            return self._send(200, progress_payload())
         return self._send(404, {"error": "rota desconhecida"})
 
     # ---- POST ----
@@ -553,7 +574,11 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 entry = {"Key": int(key), "Quantity": 0}
                 curs.append(entry)
             entry["Quantity"] = qty
-            return self._send(200, {"ok": True, "key": entry["Key"], "quantity": qty})
+            res = {"ok": True, "key": entry["Key"], "quantity": qty}
+            if qty > GOLD_WARN:
+                res["warning"] = ("acima de %s: o valor vai no snapshot ao servidor e destoa do "
+                                  "total_gold_earned da Steam" % fmt_num(GOLD_WARN))
+            return self._send(200, res)
         if p == "/api/set_pet":
             if not State.save:
                 return self._send(400, {"error": "save nao carregado"})

@@ -61,7 +61,7 @@ class RoutesTest(SaveCase):
         self.save_and_check(allowed=())
 
     def test_rotas_de_leitura(self):
-        for path in ("/api/state", "/api/heroes", "/api/player", "/api/materials?slot=0"):
+        for path in ("/api/state", "/api/heroes", "/api/player", "/api/progress", "/api/materials?slot=0"):
             self.ok("GET", path)
 
     # ---------- encantamento ----------

@@ -19,7 +19,12 @@ async function api(method, path, body) {
 }
 function toast(msg, kind = "") {
   const t = $("#toast"); t.textContent = msg; t.className = "toast show " + kind;
-  setTimeout(() => (t.className = "toast"), 2600);
+  clearTimeout(toast.timer);
+  toast.timer = setTimeout(() => (t.className = "toast"), kind === "warn" ? 6000 : 2600);
+}
+// sucesso, ou aviso quando o servidor devolve "warning"
+function done(msg, res) {
+  if (res && res.warning) toast(msg + " · ⚠ " + res.warning, "warn"); else toast(msg, "ok");
 }
 function iconEl(url, fallback) {
   if (url) { const i = el("img"); i.src = url; i.alt = ""; return i; }
@@ -31,6 +36,21 @@ async function boot() {
   const st = await api("GET", "/api/state");
   $("#savePath").value = st.path || "";
   $("#locale").value = st.locale || "pt";
+  showState(st);
+  setInterval(() => api("GET", "/api/state").then(showState).catch(() => {}), 10000);
+}
+// jogo aberto + caminho do save do jogo = Salvar bloqueado (o servidor tambem recusa)
+function showState(st) {
+  STATE.gameBlocks = !!(st.isGameSave && st.gameRunning !== false);
+  const gs = $("#gameState");
+  gs.classList.toggle("hidden", !STATE.gameBlocks);
+  gs.textContent = st.gameRunning === null
+    ? "Não deu para conferir se o jogo está aberto — o Salvar fica bloqueado no save do jogo."
+    : "O Taskbar Hero está aberto: feche o jogo para salvar (ele regrava o save a cada 3 min e ao fechar).";
+  const v = [st.dataVersion && "dados do jogo " + st.dataVersion, st.saveVersion && "save " + st.saveVersion];
+  $("#versions").textContent = v.filter(Boolean).join(" · ") +
+    (st.saveVersion && st.dataVersion && st.saveVersion !== st.dataVersion ? " ⚠ versões diferentes" : "");
+  $("#btnSave").disabled = !STATE.loaded || STATE.gameBlocks;
 }
 async function doLoad() {
   try {
@@ -38,7 +58,7 @@ async function doLoad() {
     applyHeroes(data);
     STATE.loaded = true;
     STATE.materialsCache = {};
-    $("#btnSave").disabled = false;
+    showState(await api("GET", "/api/state"));
     updateAutoBuildUI();
     if (STATE.tab === "player") refreshPlayer();
     toast("Save carregado (" + data.heroes.length + " heróis)", "ok");
@@ -48,11 +68,11 @@ async function doSave() {
   try {
     const r = await api("POST", "/api/save", {});
     const fix = r.fixed ? ` · ${r.fixed} item(ns) com contador corrigido` : "";
-    toast("Salvo!" + fix + " · backup .bak criado", "ok");
+    done("Salvo!" + fix + " · backup .bak criado", r);
   } catch (e) { toast("Erro ao salvar: " + e.message, "err"); }
 }
 function applyHeroes(data) {
-  STATE.heroes = data.heroes; STATE.locale = data.locale;
+  STATE.heroes = data.heroes; STATE.locale = data.locale; STATE.playTimeMinutes = data.playTimeMinutes;
   STATE.hero = null; STATE.item = null;
   renderHeroes(); renderHeroEdit();
   $("#itemGrid").innerHTML = ""; $("#itemEmpty").style.display = "block";
@@ -164,19 +184,33 @@ function renderHeroEdit() {
     r.append(i); box.append(r);
     return i;
   };
-  const inLv = mkRow("Nível", h.level, { min: 1, max: 1000 });
-  const inAp = mkRow("Skill points", h.abilityPoint, { min: 0, title: "pontos de habilidade sobrando (não gastos)" });
+  if (!h.unlocked) {
+    box.append(el("div", "readonly", "Herói bloqueado no jogo — não editável."));
+    return;
+  }
+  const inLv = mkRow("Nível", h.level, { min: 1, max: h.levelMax });
+  const inAp = mkRow("Skill points", h.abilityPoint, { min: 0, max: h.apCap, title: "pontos de habilidade sobrando (não gastos)" });
   const inXp = mkRow("EXP", h.exp, { min: 0, step: "any" });
-  box.append(el("div", "hint", "máx. de nível conhecido no jogo: 101"));
+  const hint = el("div", "hint"); box.append(hint);
+  const syncXp = () => {  // EXP so abaixo do nivel maximo; ao mudar o nivel, recomeca em 0
+    const atMax = +inLv.value >= h.levelMax;
+    inXp.disabled = atMax;
+    if (+inLv.value !== h.level) inXp.value = atMax ? h.exp : 0;
+    hint.textContent = `nível 1–${h.levelMax}` +
+      (atMax ? " · no nível máximo a EXP é só exibição" : (h.expCap && +inLv.value === h.level ? ` · EXP abaixo de ${fmt(h.expCap)}` : "")) +
+      ` · pontos livres até ${h.apCap} (nível − ${h.allocatedPoints} já alocados)` +
+      (STATE.playTimeMinutes < 3000 && +inLv.value >= 50 ? " · ⚠ nível ≥ 50/80 com pouco tempo de jogo gera relatório ao servidor" : "");
+  };
+  inLv.oninput = syncXp; syncXp();
   const apply = el("button", "primary", "Aplicar");
   apply.onclick = async () => {
     try {
-      const r = await api("POST", "/api/set_hero", {
-        heroKey: h.heroKey, level: +inLv.value, abilityPoint: +inAp.value, exp: +inXp.value,
-      });
+      const body = { heroKey: h.heroKey, level: +inLv.value, abilityPoint: +inAp.value };
+      if (!inXp.disabled) body.exp = +inXp.value;
+      const r = await api("POST", "/api/set_hero", body);
       Object.assign(h, r.hero);
       renderHeroes(); renderHeroEdit();
-      toast("Herói atualizado — lembre de Salvar no jogo", "ok");
+      done("Herói atualizado — lembre de Salvar no jogo", r);
     } catch (e) { toast("Erro: " + e.message, "err"); }
   };
   const act = el("div", "actions"); act.append(apply); box.append(act);
@@ -205,9 +239,10 @@ function renderEnchants() {
   $("#enchEmpty").style.display = "none";
   $("#enchTitle").textContent = it.name + "  ·  " + (it.group || "") + (it.grade ? "  ·  " + it.grade : "");
   body.innerHTML = "";
-  it.enchants.forEach((e) => body.append(slotCard(e)));
+  if (it.readOnly) body.append(el("div", "readonly", "Somente leitura: " + it.readOnly));
+  it.enchants.forEach((e) => body.append(slotCard(e, !!it.readOnly)));
 }
-function slotCard(e) {
+function slotCard(e, readOnly) {
   const s = el("div", "slot" + (e.allowed ? "" : " locked"));
   const head = el("div", "head");
   head.append(el("span", "tag " + e.type, e.label));
@@ -216,12 +251,14 @@ function slotCard(e) {
     cur.innerHTML = `<i>indisponível — a grade do item não tem este slot</i>`;
   } else if (e.filled) {
     cur.innerHTML = `<b>${e.materialName}</b> — <span class="stat">${e.stat}</span> · T${e.tier} · <b>${e.value}</b>`;
-    if (e.errors && e.errors.length) cur.append(el("div", "err", "⚠ " + e.errors.join("; ")));
+    if (e.errors && e.errors.length) cur.append(el("div", "legacy",
+      "⚠ fora das tabelas da versão atual do jogo (encantamento legado; o editor não altera sozinho): " +
+      e.errors.join("; ")));
   } else cur.innerHTML = `<i>vazio</i>`;
   head.append(cur);
   s.append(head);
 
-  if (e.allowed) {
+  if (e.allowed && !readOnly) {
     const actions = el("div", "actions");
     const edit = el("button", "", e.filled ? "Editar" : "Adicionar");
     edit.onclick = () => openEditor(s, e);
@@ -327,7 +364,7 @@ async function setEnchant(payload) {
     if (idx >= 0) h.items[idx] = item;
     STATE.item = item;
     renderItems(); renderEnchants();
-    toast(payload.clear ? "Slot limpo" : "Encantamento aplicado", "ok");
+    toast(payload.clear ? "Slot limpo" : "Encantamento aplicado — lembre de Salvar", "ok");
   } catch (e) { toast("Erro: " + e.message, "err"); }
 }
 
@@ -339,6 +376,7 @@ async function refreshPlayer() {
     $("#playerEmpty").classList.add("hidden");
     panes.forEach((p) => p.classList.remove("hidden"));
     renderPlayer(d);
+    renderProgress(await api("GET", "/api/progress"));
   } catch (e) {
     $("#playerEmpty").classList.remove("hidden");
     panes.forEach((p) => p.classList.add("hidden"));
@@ -355,26 +393,39 @@ function renderPlayer(d) {
     const b = el("button", "", "Aplicar");
     b.onclick = async () => {
       try {
-        await api("POST", "/api/set_currency", { key: c.key, quantity: +i.value });
-        toast(c.name + " atualizado — lembre de Salvar no jogo", "ok");
+        const r = await api("POST", "/api/set_currency", { key: c.key, quantity: +i.value });
+        done(c.name + " atualizado — lembre de Salvar no jogo", r);
         refreshPlayer();
       } catch (e) { toast("Erro: " + e.message, "err"); }
     };
     kv.append(i, b); cl.append(kv);
   });
+  cl.append(el("div", "hint", "Ouro acima de 100 milhões gera aviso: o valor vai no snapshot ao servidor."));
   if (d.cube && d.cube.level != null) {
+    const c = d.cube;
     const kv = el("div", "kv");
-    kv.append(el("span", "nm", `<b>Nível do Cubo</b><br><small>exp ${fmt(d.cube.exp || 0)}</small>`));
-    const i = el("input"); i.type = "number"; i.min = 1; i.value = d.cube.level;
+    kv.append(el("span", "nm", `<b>Nível do Cubo</b><br><small>1–${c.levelMax}</small>`));
+    const i = el("input"); i.type = "number"; i.min = 1; i.max = c.levelMax; i.value = c.level;
+    const x = el("input"); x.type = "number"; x.min = 0; x.step = "any"; x.value = c.exp; x.title = "Exp do cubo";
+    const sync = () => {
+      const atMax = +i.value >= c.levelMax;
+      x.disabled = atMax;
+      if (+i.value !== c.level) x.value = atMax ? c.exp : 0;
+    };
+    i.oninput = sync; sync();
     const b = el("button", "", "Aplicar");
     b.onclick = async () => {
       try {
-        await api("POST", "/api/set_cube", { level: +i.value });
-        toast("Cubo atualizado — lembre de Salvar no jogo", "ok");
+        const body = { level: +i.value };
+        if (!x.disabled) body.exp = +x.value;
+        const r = await api("POST", "/api/set_cube", body);
+        done("Cubo atualizado — lembre de Salvar no jogo", r);
         refreshPlayer();
       } catch (e) { toast("Erro: " + e.message, "err"); }
     };
-    kv.append(i, b); cl.append(kv);
+    kv.append(i, x, b); cl.append(kv);
+    cl.append(el("div", "hint", (c.expCap ? `Exp abaixo de ${fmt(c.expCap)} neste nível; ` : "No nível máximo o Exp é fixo; ") +
+      "o nível do cubo vai em cube_level da Steam e o nível 10 libera o Trade Ship — não use o editor para liberar o Market."));
   }
 
   // --- pets ---
@@ -383,11 +434,13 @@ function renderPlayer(d) {
     const c = el("div", "card pet");
     c.append(el("div", "nm", pt.name + (String(pt.key) === String(d.arrangedPetKey) ? " ⭐" : "")));
     c.append(el("div", "state " + (pt.unlocked ? "on" : "off"), pt.unlocked ? "desbloqueado" : "bloqueado"));
+    if (pt.dlc) { c.append(el("div", "hint", "DLC — gerenciado pela Steam")); pg.append(c); return; }
+    if (pt.need) c.append(el("div", "hint", `abates: ${fmt(pt.kills)} / ${fmt(pt.need)}`));
     const b = el("button", "", pt.unlocked ? "Bloquear" : "Desbloquear");
     b.onclick = async () => {
       try {
-        await api("POST", "/api/set_pet", { petKey: pt.key, unlock: !pt.unlocked });
-        toast("Pet atualizado — lembre de Salvar no jogo", "ok");
+        const r = await api("POST", "/api/set_pet", { petKey: pt.key, unlock: !pt.unlocked });
+        done("Pet atualizado — lembre de Salvar no jogo", r);
         refreshPlayer();
       } catch (e) { toast("Erro: " + e.message, "err"); }
     };
@@ -395,7 +448,7 @@ function renderPlayer(d) {
   });
   $("#btnAllPets").onclick = async () => {
     try {
-      const locked = d.pets.filter((x) => !x.unlocked);
+      const locked = d.pets.filter((x) => !x.unlocked && !x.dlc);
       if (!locked.length) return toast("Todos os pets já estão desbloqueados", "ok");
       for (const pt of locked) await api("POST", "/api/set_pet", { petKey: pt.key, unlock: true });
       toast(locked.length + " pet(s) desbloqueado(s) — lembre de Salvar no jogo", "ok");
@@ -426,6 +479,20 @@ function renderPlayer(d) {
   rb.append(el("div", "hint", "Sobem até o MaxLevel da tabela do jogo. As runas de baú (chance de drop, " +
     "capacidade, auto-abertura, abrir todos) ficam de fora: mexem em baús que o servidor processa e " +
     "cujos itens vão para o Steam Market."));
+}
+
+// ---------- progresso (somente leitura; o servidor do jogo manda nos estágios) ----------
+function renderProgress(p) {
+  const box = $("#progressBox"); box.innerHTML = "";
+  const st = (s) => (s && s.name ? `${s.name} <small>(${s.difficulty} ${s.act}-${s.no}, ${s.type})</small>` : (s && s.key) || "—");
+  const row = (k, v) => { const r = el("div", "row"); r.append(el("span", null, k), el("span", null, v)); box.append(r); };
+  row("Estágio atual", st(p.current) + (p.wave != null ? ` · onda ${p.wave}` : ""));
+  row("Desbloqueado até", st(p.unlockedUpTo));
+  row("Último estágio vencido", st(p.lastCleared));
+  row("Intensidade da Peste (última escolhida)",
+    p.plague.filter((x) => x.intensity).map((x) => `${x.difficulty} ${x.intensity}`).join(" · ") || "—");
+  row("Tempo de jogo", `${fmt(p.playTimeHours)} h`);
+  box.append(el("div", "hint", "O servidor do jogo é a autoridade sobre o progresso e sobrescreve o que estiver no save; por isso não há edição aqui."));
 }
 
 // ---------- bind ----------
