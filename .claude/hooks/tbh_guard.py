@@ -57,9 +57,19 @@ NULL_TARGETS = {"$null", "/dev/null", "nul", "nul:"}
 PROP_SET = re.compile(r"\)\s*\.\s*\w+\s*=(?!=)")
 
 
+# copias em ~/tbh_re (snapshots, scratch) tem o mesmo nome do save vivo, mas nao sao ele
+RE_COPY = re.compile(r"[^\s|;&<>()]*tbh_re[\\/][^\s|;&<>()]*")
+NOT_A_COPY = ("..", "tesseract", "locallow", "steamapps", "tesser~1", "taskba~1")
+
+
+def _drop_re_copies(t):
+    """Tira do texto os caminhos dentro de tbh_re/ (exceto com .. ou pastas do jogo no meio)."""
+    return RE_COPY.sub(lambda m: m.group(0) if any(s in m.group(0) for s in NOT_A_COPY) else " ", t)
+
+
 def mentions(text):
     """O texto cita o save vivo ou a instalacao do jogo (com ou sem aspas, barras, 8.3...)?"""
-    t = (text or "").lower().replace('"', "").replace("'", "")
+    t = _drop_re_copies((text or "").lower().replace('"', "").replace("'", ""))
     return bool(ADJ.search(t)) or "tesseractstudio" in t or "savefile_live" in t \
         or "tesser~1" in t or "taskba~1" in t \
         or ("taskbarhero" in t and ("steamapps" in t or "locallow" in t)) \
