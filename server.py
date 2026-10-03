@@ -43,10 +43,13 @@ class State:
     stamp = None  # (tamanho, sha256) do arquivo no load: o Salvar recusa se ele mudou
 
 
+def stamp_of(data):
+    return len(data), hashlib.sha256(data).hexdigest()
+
+
 def file_stamp(path):
     with open(path, "rb") as fh:
-        data = fh.read()
-    return len(data), hashlib.sha256(data).hexdigest()
+        return stamp_of(fh.read())
 
 
 def pending_summary():
@@ -419,9 +422,11 @@ class Handler(http.server.BaseHTTPRequestHandler):
             path = body.get("path") or default_save_path()
             State.locale = body.get("locale", State.locale)
             try:
-                State.save = es3.SaveFile.load(path)
+                with open(path, "rb") as fh:
+                    raw = fh.read()
+                State.save = es3.SaveFile.from_bytes(raw)  # carimbo dos MESMOS bytes decriptados
                 State.path = path
-                State.stamp = file_stamp(path)
+                State.stamp = stamp_of(raw)
             except Exception as e:
                 return self._send(400, {"error": "falha ao carregar: %s" % e})
             return self._send(200, heroes_payload())
@@ -662,20 +667,23 @@ class Handler(http.server.BaseHTTPRequestHandler):
             if now != State.stamp:
                 return self._send(409, {"error": "o arquivo mudou desde que foi carregado (o jogo salvou?): "
                                                  "carregue de novo e refaça a edição"})
-            # repara EnchantCount diferente dos slots ocupados em todos os itens
+            # repara EnchantCount diferente dos slots ocupados, so nos itens que o editor pode
+            # editar (item Steam, fora das tabelas ou com transacao pendente fica como esta)
+            names, pend = pending_summary()
             fixed = 0
             for it in State.save.player.get("itemSaveDatas", []):
+                if GD.enchantable(it["ItemKey"]) or str(it.get("UniqueId")) in pend:
+                    continue
                 before = it.get("EnchantCount")
                 GD.recount_enchants(it)
                 if it["EnchantCount"] != before:
                     fixed += 1
             try:
-                State.save.save(State.path, backup=True)  # atomico: .tmp + os.replace
-                State.stamp = file_stamp(State.path)
+                blob = State.save.save(State.path, backup=True)  # atomico: .tmp + os.replace
+                State.stamp = stamp_of(blob)
             except Exception as e:
                 return self._send(500, {"error": str(e)})
             res = {"ok": True, "path": State.path, "backup": State.path + ".bak", "fixed": fixed}
-            names, _uids = pending_summary()
             if names:  # P2-2: o jogo conclui essas transacoes com o servidor na proxima abertura
                 res["warning"] = ("o save tem transações pendentes (%s); os itens citados não foram editados"
                                   % ", ".join(names))

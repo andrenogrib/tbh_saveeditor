@@ -90,7 +90,10 @@ class SaveFile:
     @classmethod
     def load(cls, path, password=ES3_PASSWORD):
         with open(path, "rb") as fh:
-            raw = fh.read()
+            return cls.from_bytes(fh.read(), password)
+
+    @classmethod
+    def from_bytes(cls, raw, password=ES3_PASSWORD):
         es3_obj = json.loads(es3_decrypt(raw, password).decode("utf-8"))
         return cls(es3_obj, password)
 
@@ -114,7 +117,7 @@ class SaveFile:
 
     def save(self, path, backup=True):
         """Grava atomicamente: escreve <path>.tmp, guarda o atual em <path>.bak e troca com
-        os.replace (o arquivo nunca fica pela metade)."""
+        os.replace (o arquivo nunca fica pela metade). Devolve os bytes gravados."""
         blob = self.to_es3_bytes()
         tmp = path + ".tmp"
         with open(tmp, "wb") as fh:
@@ -124,4 +127,4 @@ class SaveFile:
         if backup and os.path.exists(path):
             shutil.copyfile(path, path + ".bak")
         os.replace(tmp, path)
-        return path
+        return blob

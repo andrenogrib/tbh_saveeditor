@@ -36,6 +36,10 @@ class SaveSafetyTest(SaveCase):
         with open(self.path, "rb") as fh:
             self.assertEqual(fh.read(), changed)
 
+    def test_carimbo_e_dos_bytes_decriptados(self):
+        with open(self.path, "rb") as fh:
+            self.assertEqual(server.State.stamp, server.stamp_of(fh.read()))
+
     def test_gravacao_atomica_e_salvar_duas_vezes(self):
         self.save_and_check(allowed=())
         self.assertFalse(os.path.exists(self.path + ".tmp"))
@@ -51,8 +55,10 @@ class SaveSafetyTest(SaveCase):
         before = json.dumps(it, sort_keys=True)
         self.ok("POST", "/api/auto_build", {"mode": "damage", "overwrite": True})
         self.assertEqual(json.dumps(it, sort_keys=True), before)
+        it["EnchantCount"] = [3, 3, 3]  # o jogo ja contou o encantamento que o servidor vai confirmar
         res = self.ok("POST", "/api/save", {})
         self.assertIn("pendingEnchantList", res.get("warning", ""))
+        self.assertEqual(it["EnchantCount"], [3, 3, 3])  # o Salvar nao "repara" item pendente
 
 
 class RequestGuardTest(SaveCase):
