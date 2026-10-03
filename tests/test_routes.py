@@ -256,12 +256,19 @@ class RoutesTest(SaveCase):
 
     # ---------- runas ----------
     def test_max_runes(self):
-        self.ok("POST", "/api/max_runes", {})
+        """P1-9: eleva ate MaxLevel tudo menos a familia bau; nunca acima do maximo."""
         gd = GD()
+        before = {r["RuneKey"]: r["Level"] for r in self.save.player["RuneSaveData"]}
+        res = self.ok("POST", "/api/max_runes", {})
         for r in self.save.player["RuneSaveData"]:
             mx = gd.rune_max_level(r["RuneKey"])
-            if mx is not None:
-                self.assertLessEqual(r["Level"], mx)
+            if mx is None:
+                continue
+            if gd.rune_is_chest(r["RuneKey"]):
+                self.assertEqual(r["Level"], before[r["RuneKey"]])
+            else:
+                self.assertEqual(r["Level"], max(before[r["RuneKey"]], mx))
+        self.assertEqual(len(res["skippedChest"]), res["runes"]["chest"])
         self.save_and_check(allowed=["player.RuneSaveData"])
 
     # ---------- cubo ----------

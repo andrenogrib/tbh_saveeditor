@@ -405,17 +405,24 @@ function renderPlayer(d) {
   const r = d.runes;
   rb.append(el("div", null,
     `<b>${r.maxed}</b> de <b>${r.total}</b> runas no nível máximo` +
-    (r.unknown ? ` <small>(${r.unknown} sem dados na tabela)</small>` : "")));
-  const btn = el("button", "primary", "Maximizar todas as runas");
+    (r.below ? ` · <b>${r.below}</b> podem subir` : "") +
+    (r.chest ? ` · <small>${r.chest} de baú ficam de fora</small>` : "") +
+    (r.unknown ? ` · <small>${r.unknown} sem dados na tabela</small>` : "")));
+  const btn = el("button", "primary", "Maximizar runas");
   btn.onclick = async () => {
     try {
       const res = await api("POST", "/api/max_runes", {});
-      toast(res.changed + " runa(s) elevadas ao máximo — lembre de Salvar no jogo", "ok");
+      const skipped = res.skippedChest.length ? ` · ${res.skippedChest.length} de baú ficaram de fora` : "";
+      if (res.changed) toast(`${res.changed} runa(s) elevadas ao máximo${skipped} — lembre de Salvar`, "ok");
+      else toast(`Nenhuma runa mudou: ${res.runes.maxed} já no máximo${skipped}` +
+        (res.runes.unknown ? `, ${res.runes.unknown} sem dados` : ""), "");
       refreshPlayer();
     } catch (e) { toast("Erro: " + e.message, "err"); }
   };
   const act = el("div", "actions"); act.append(btn); rb.append(act);
-  rb.append(el("div", "hint", "As runas do save sobem para o MaxLevel das tabelas do jogo."));
+  rb.append(el("div", "hint", "Sobem até o MaxLevel da tabela do jogo. As runas de baú (chance de drop, " +
+    "capacidade, auto-abertura, abrir todos) ficam de fora: mexem em baús que o servidor processa e " +
+    "cujos itens vão para o Steam Market."));
 }
 
 // ---------- bind ----------

@@ -194,7 +194,8 @@ def hero_brief(h):
 
 
 def runes_summary():
-    total = maxed = unknown = 0
+    """Contagem das runas do save: no maximo, abaixo (editaveis / familia bau) e sem dados."""
+    total = maxed = unknown = below = chest = 0
     for r in State.save.player.get("RuneSaveData", []):
         total += 1
         mx = GD.rune_max_level(r.get("RuneKey"))
@@ -202,7 +203,11 @@ def runes_summary():
             unknown += 1
         elif int(r.get("Level", 0)) >= mx:
             maxed += 1
-    return {"total": total, "maxed": maxed, "unknown": unknown}
+        elif GD.rune_is_chest(r.get("RuneKey")):
+            chest += 1
+        else:
+            below += 1
+    return {"total": total, "maxed": maxed, "unknown": unknown, "below": below, "chest": chest}
 
 
 def pet_progress(pet_key):
@@ -484,13 +489,18 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if p == "/api/max_runes":
             if not State.save:
                 return self._send(400, {"error": "save nao carregado"})
-            changed = 0
+            changed, chest = 0, []
             for r in State.save.player.get("RuneSaveData", []):
                 mx = GD.rune_max_level(r.get("RuneKey"))
-                if mx is not None and int(r.get("Level", 0)) < mx:
-                    r["Level"] = mx
-                    changed += 1
-            return self._send(200, {"ok": True, "changed": changed, "runes": runes_summary()})
+                if mx is None or int(r.get("Level", 0)) >= mx:
+                    continue
+                if GD.rune_is_chest(r.get("RuneKey")):  # P1-9: familia bau fica de fora
+                    chest.append(GD.rune_name(r.get("RuneKey"), State.locale))
+                    continue
+                r["Level"] = mx
+                changed += 1
+            return self._send(200, {"ok": True, "changed": changed, "skippedChest": chest,
+                                    "runes": runes_summary()})
         if p == "/api/set_cube":
             if not State.save:
                 return self._send(400, {"error": "save nao carregado"})
